@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+lineage.json
+*.local.json
+.DS_Store

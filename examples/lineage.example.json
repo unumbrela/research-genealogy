@@ -1,0 +1,20 @@
+{
+  "field": "生成图像检测 (Generated Image Detection)",
+  "_note": "Illustrative shape only. In real use every node MUST come from scripts/papers.py output, not from memory.",
+  "nodes": [
+    {"id": "marra2018", "title": "Detection of GAN-Generated Fake Images over Social Networks", "authors": "Marra et al.", "year": 2018, "venue": "MIPR", "citations": 600, "problem": "GAN生成图像在社交网络上的溯源", "contribution": "发现GAN留下可检测的CNN指纹", "url": "https://example.org/marra2018"},
+    {"id": "wang2020", "title": "CNN-generated images are surprisingly easy to spot... for now", "authors": "Wang et al.", "year": 2020, "venue": "CVPR", "citations": 1500, "problem": "跨不同GAN模型的泛化检测", "contribution": "单一CNN+强数据增广实现跨模型泛化", "url": "https://example.org/wang2020"},
+    {"id": "frank2020", "title": "Leveraging Frequency Analysis for Deep Fake Image Recognition", "authors": "Frank et al.", "year": 2020, "venue": "ICML", "citations": 700, "problem": "GAN上采样导致的频域伪影", "contribution": "从频谱而非像素域检测", "url": "https://example.org/frank2020"},
+    {"id": "wang2023dire", "title": "DIRE for Diffusion-Generated Image Detection", "authors": "Wang et al.", "year": 2023, "venue": "ICCV", "citations": 400, "problem": "扩散模型生成图像的检测", "contribution": "用重建误差(DIRE)作为通用判据", "url": "https://example.org/dire2023"},
+    {"id": "ojha2023", "title": "Towards Universal Fake Image Detectors that Generalize Across Generative Models", "authors": "Ojha et al.", "year": 2023, "venue": "CVPR", "citations": 350, "problem": "跨GAN与扩散的统一检测", "contribution": "用冻结的CLIP特征做通用检测", "url": "https://example.org/ojha2023"}
+  ],
+  "edges": [
+    {"from": "marra2018", "to": "wang2020", "relation": "builds-on"},
+    {"from": "marra2018", "to": "frank2020", "relation": "inspired-by"},
+    {"from": "wang2020", "to": "frank2020", "relation": "parallel"},
+    {"from": "wang2020", "to": "wang2023dire", "relation": "builds-on"},
+    {"from": "frank2020", "to": "wang2023dire", "relation": "parallel"},
+    {"from": "wang2020", "to": "ojha2023", "relation": "builds-on"},
+    {"from": "wang2023dire", "to": "ojha2023", "relation": "parallel"}
+  ]
+}
