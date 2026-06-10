@@ -1,17 +1,30 @@
 {
-  "field": "生成图像检测 (Generated / AI-Synthesized Image Detection)",
-  "_source": "All nodes fetched from OpenAlex via scripts/papers.py (real ids, years, citations as of 2026-06). Edges grounded by expanding hubs W3034577585 and W4386071953.",
+  "field": "生成图像检测 (AI-Generated Image Detection)",
+  "_source": "Draft by scripts/genealogy.py (multi-pass search + citation snowball + in-field ranking + transitive reduction), refined per SKILL.md: marra2018 added by targeted title search, ramesh2022 edges relabeled inspired-by, one redundant survey pruned, summaries rewritten from real abstracts. All metadata from OpenAlex, 2026-06.",
   "nodes": [
     {
       "id": "marra2018",
       "title": "Detection of GAN-Generated Fake Images over Social Networks",
-      "authors": "Marra et al.",
+      "authors": "Francesco Marra et al.",
       "year": 2018,
       "venue": "MIPR",
-      "citations": 389,
-      "problem": "社交网络上传播的GAN生成图像难以溯源/识别",
-      "contribution": "发现GAN生成图像残留可检测的模型指纹，奠基判别式检测",
-      "url": "https://openalex.org/W2811414481"
+      "citations": 390,
+      "problem": "GAN生成的假图像在社交网络快速扩散且常被压缩重传，现有取证方法是否仍有效未知",
+      "contribution": "首次系统评测多种检测器对GAN生成图像（含社交网络压缩场景）的性能，奠定任务基准",
+      "url": "https://doi.org/10.1109/mipr.2018.00084",
+      "oa": "W2811414481"
+    },
+    {
+      "id": "zhang2019",
+      "title": "Detecting and Simulating Artifacts in GAN Fake Images",
+      "authors": "Xu Zhang et al.",
+      "year": 2019,
+      "venue": "WIFS",
+      "citations": 498,
+      "problem": "监督式检测需要目标GAN的大量假图训练，而攻击者用的具体模型往往不可得",
+      "contribution": "提出GAN模拟器AutoGAN模拟共有上采样管线的伪影，在频谱域训练无需目标GAN的检测器",
+      "url": "https://doi.org/10.1109/wifs47025.2019.9035107",
+      "oa": "W3012472557"
     },
     {
       "id": "yu2019",
@@ -19,21 +32,11 @@
       "authors": "Ning Yu et al.",
       "year": 2019,
       "venue": "ICCV",
-      "citations": 425,
-      "problem": "不仅要判真假，还要归因到具体哪个GAN",
-      "contribution": "形式化“GAN指纹”，实现对生成模型的来源归因",
-      "url": "https://openalex.org/W2991318208"
-    },
-    {
-      "id": "durall2019",
-      "title": "Unmasking DeepFakes with simple Features",
-      "authors": "Durall et al.",
-      "year": 2019,
-      "venue": "arXiv",
-      "citations": 176,
-      "problem": "像素域检测器对新生成器泛化差",
-      "contribution": "改从频谱(DFT)看上采样伪影，开启频域检测路线",
-      "url": "https://openalex.org/W2987809008"
+      "citations": 426,
+      "problem": "GAN生成图像逼近真实，不仅要辨真伪，还要追溯到具体生成模型",
+      "contribution": "首次提出可学习的「GAN指纹」，同时实现真伪判别与生成模型来源归因",
+      "url": "https://doi.org/10.1109/iccv.2019.00765",
+      "oa": "W2991318208"
     },
     {
       "id": "wang2020",
@@ -41,21 +44,35 @@
       "authors": "Sheng-Yu Wang et al.",
       "year": 2020,
       "venue": "CVPR",
-      "citations": 994,
-      "problem": "如何让检测器跨不同GAN架构泛化",
-      "contribution": "单一ResNet+强数据增广，仅用ProGAN训练即可跨多种GAN泛化，成为最强基线",
-      "url": "https://openalex.org/W3034577585"
+      "citations": 996,
+      "problem": "检测器能否跨架构、跨数据集地泛化到未见过的CNN生成器",
+      "contribution": "仅用ProGAN训练的ResNet+强数据增广即可泛化到11种生成器，CNNDetection成为最强基线",
+      "url": "https://doi.org/10.1109/cvpr42600.2020.00872",
+      "oa": "W3034577585"
     },
     {
-      "id": "frank2020",
-      "title": "Leveraging Frequency Analysis for Deep Fake Image Recognition",
-      "authors": "Frank et al.",
+      "id": "durall2020",
+      "title": "Watch your Up-Convolution: CNN Based Generative Deep Neural Networks are Failing to Reproduce Spectral Distributions",
+      "authors": "Ricard Durall et al.",
       "year": 2020,
-      "venue": "ICML",
-      "citations": 209,
-      "problem": "GAN上采样在频域留下系统性伪影",
-      "contribution": "用DCT频谱特征做检测，理论化频域路线",
-      "url": "https://openalex.org/W3012033723"
+      "venue": "CVPR",
+      "citations": 407,
+      "problem": "GAN类生成模型无法正确复现自然图像的频谱分布，但其机理与利用方式不明",
+      "contribution": "揭示上采样（up-convolution）造成的系统性频谱伪影，确立频域检测路线并提出频谱正则",
+      "url": "https://opus.hs-offenburg.de/frontdoor/index/index/docId/4413",
+      "oa": "W3034864980"
+    },
+    {
+      "id": "ramesh2022",
+      "title": "Hierarchical Text-Conditional Image Generation with CLIP Latents",
+      "authors": "Aditya Ramesh et al.",
+      "year": 2022,
+      "venue": "arXiv",
+      "citations": 2280,
+      "problem": "（语境节点）文生图扩散模型让任何人都能生成逼真图像",
+      "contribution": "DALL·E 2（unCLIP）引爆扩散生成时代，迫使检测研究从GAN转向扩散模型",
+      "url": "http://arxiv.org/abs/2204.06125",
+      "oa": "W4224035735"
     },
     {
       "id": "ojha2023",
@@ -63,76 +80,71 @@
       "authors": "Utkarsh Ojha et al.",
       "year": 2023,
       "venue": "CVPR",
-      "citations": 269,
-      "problem": "在GAN上训练的检测器无法泛化到扩散模型",
-      "contribution": "改用冻结的CLIP/ViT特征空间+轻量分类，跨GAN与扩散通用检测",
-      "url": "https://openalex.org/W4386071953"
-    },
-    {
-      "id": "wang2023dire",
-      "title": "DIRE for Diffusion-Generated Image Detection",
-      "authors": "Zhendong Wang et al.",
-      "year": 2023,
-      "venue": "ICCV",
-      "citations": 222,
-      "problem": "扩散模型生成图像缺乏GAN式指纹，旧检测器失效",
-      "contribution": "用扩散重建误差(DIRE)作为通用判据检测扩散生成图",
-      "url": "https://openalex.org/W4390873235"
+      "citations": 272,
+      "problem": "在GAN假图上训练的真假分类器对扩散模型等新生成器系统性失效",
+      "contribution": "弃用专门训练的分类器，用冻结CLIP特征空间+最近邻/线性探针实现跨生成器通用检测",
+      "url": "https://doi.org/10.1109/cvpr52729.2023.02345",
+      "oa": "W4386071953"
     },
     {
       "id": "corvi2023",
       "title": "On The Detection of Synthetic Images Generated by Diffusion Models",
-      "authors": "Corvi et al.",
+      "authors": "Riccardo Corvi et al.",
       "year": 2023,
       "venue": "ICASSP",
       "citations": 236,
-      "problem": "频域/forensics方法在扩散时代是否仍然有效",
-      "contribution": "系统分析扩散图像的伪影，把GAN时代的取证经验迁移到扩散",
-      "url": "https://openalex.org/W4375869427"
+      "problem": "GAN时代积累的取证检测器对扩散模型生成的图像是否仍然有效",
+      "contribution": "系统分析扩散图像的频谱与指纹伪影，把GAN取证经验迁移到扩散时代",
+      "url": "https://doi.org/10.1109/icassp49357.2023.10095167",
+      "oa": "W4375869427"
+    },
+    {
+      "id": "wang2023",
+      "title": "DIRE for Diffusion-Generated Image Detection",
+      "authors": "Zhendong Wang et al.",
+      "year": 2023,
+      "venue": "ICCV",
+      "citations": 224,
+      "problem": "现有检测器即使在扩散假图上训练，对扩散生成图像的泛化仍然很差",
+      "contribution": "提出DIRE重建误差判据——扩散模型重建自家生成图的误差更小，开辟重建误差路线",
+      "url": "https://doi.org/10.1109/iccv51070.2023.02051",
+      "oa": "W4390873235"
     },
     {
       "id": "cozzolino2024",
       "title": "Raising the Bar of AI-generated Image Detection with CLIP",
-      "authors": "Cozzolino et al.",
+      "authors": "Davide Cozzolino et al.",
       "year": 2024,
       "venue": "CVPRW",
       "citations": 85,
-      "problem": "CLIP特征检测的上限与最佳实践尚不清楚",
-      "contribution": "系统化CLIP-based通用检测，刷新跨生成器泛化SOTA",
-      "url": "https://openalex.org/W4402915983"
+      "problem": "CLIP等视觉-语言模型用于通用AI图像检测的潜力与最佳实践尚不清楚",
+      "contribution": "仅需少量样本的轻量CLIP检测策略，在多种困难场景下保持鲁棒，刷新通用检测上限",
+      "url": "https://doi.org/10.1109/cvprw63382.2024.00439",
+      "oa": "W4402915983"
     },
     {
-      "id": "liu2024fatformer",
-      "title": "Forgery-aware Adaptive Transformer for Generalizable Synthetic Image Detection",
-      "authors": "Huan Liu et al.",
-      "year": 2024,
-      "venue": "CVPR",
-      "citations": 64,
-      "problem": "如何让Transformer检测器对未见生成器自适应泛化",
-      "contribution": "前向感知自适应Transformer(FatFormer)，强化跨生成器泛化",
-      "url": "https://openalex.org/W4402753859"
+      "id": "li2025",
+      "title": "FakeBench: Probing Explainable Fake Image Detection via Large Multimodal Models",
+      "authors": "Yixuan Li et al.",
+      "year": 2025,
+      "venue": "IEEE TIFS",
+      "citations": 10,
+      "problem": "现有检测只输出二元判定，缺乏普通人可理解的取证解释，削弱可信度",
+      "contribution": "提出FakeBench基准，用多模态大模型探测可解释的假图检测与因果推理能力",
+      "url": "https://doi.org/10.1109/tifs.2025.3597211",
+      "oa": "W4413443924"
     },
     {
-      "id": "ricker2024aeroblade",
-      "title": "AEROBLADE: Training-Free Detection of Latent Diffusion Images Using Autoencoder Reconstruction Error",
-      "authors": "Ricker et al.",
-      "year": 2024,
-      "venue": "CVPR",
-      "citations": 38,
-      "problem": "需要无需训练即可检测潜在扩散图像",
-      "contribution": "用自编码器重建误差实现免训练检测，延续DIRE思路",
-      "url": "https://openalex.org/W4402716434"
-    },
-    {
-      "id": "willi2026",
-      "title": "Synthetic Image Detection with CLIP: Understanding and Assessing",
-      "authors": "Marco Willi et al.",
+      "id": "koutlis2026",
+      "title": "AI-Generated Image Detection: Challenges and Recent Advances",
+      "authors": "Christos Koutlis et al.",
       "year": 2026,
-      "venue": "OpenReview/arXiv",
+      "venue": "Springer (book chapter)",
       "citations": 0,
-      "problem": "CLIP-based检测为何有效、何时失效尚缺乏理解",
-      "contribution": "系统剖析CLIP检测器的机制与失效模式，为通用检测建立可解释基础",
-      "url": "https://openalex.org/W7129054805"
+      "problem": "通用检测方法激增后，领域需要对挑战与进展的最新梳理",
+      "contribution": "综述AI生成图像检测的挑战与最新进展（依标题/章节定位，原文无公开摘要）",
+      "url": "https://doi.org/10.1007/978-3-032-11782-3_6",
+      "oa": "W7159927480"
     }
   ],
   "edges": [
@@ -144,69 +156,69 @@
     },
     {
       "from": "marra2018",
-      "to": "durall2019",
-      "relation": "inspired-by",
+      "to": "wang2020",
+      "relation": "builds-on",
       "verified": "verified"
     },
     {
-      "from": "marra2018",
+      "from": "zhang2019",
       "to": "wang2020",
       "relation": "builds-on",
       "verified": "verified"
     },
     {
       "from": "yu2019",
-      "to": "wang2020",
-      "relation": "builds-on",
-      "verified": "unverified"
-    },
-    {
-      "from": "durall2019",
-      "to": "frank2020",
-      "relation": "builds-on",
-      "verified": "unverified"
-    },
-    {
-      "from": "wang2020",
-      "to": "frank2020",
-      "relation": "parallel",
-      "verified": "parallel"
-    },
-    {
-      "from": "wang2020",
-      "to": "ojha2023",
-      "relation": "builds-on",
-      "verified": "unverified"
-    },
-    {
-      "from": "wang2020",
-      "to": "wang2023dire",
+      "to": "durall2020",
       "relation": "builds-on",
       "verified": "verified"
     },
     {
-      "from": "ojha2023",
-      "to": "wang2023dire",
-      "relation": "parallel",
-      "verified": "parallel"
+      "from": "zhang2019",
+      "to": "ojha2023",
+      "relation": "builds-on",
+      "verified": "verified"
     },
     {
-      "from": "frank2020",
+      "from": "yu2019",
+      "to": "ojha2023",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "yu2019",
       "to": "corvi2023",
       "relation": "builds-on",
-      "verified": "unverified"
+      "verified": "verified"
     },
     {
-      "from": "wang2023dire",
+      "from": "wang2020",
       "to": "corvi2023",
-      "relation": "parallel",
-      "verified": "cross-cite"
+      "relation": "builds-on",
+      "verified": "verified"
     },
     {
-      "from": "ojha2023",
+      "from": "ramesh2022",
+      "to": "ojha2023",
+      "relation": "inspired-by",
+      "verified": "verified"
+    },
+    {
+      "from": "ramesh2022",
       "to": "corvi2023",
-      "relation": "parallel",
-      "verified": "parallel"
+      "relation": "inspired-by",
+      "verified": "verified"
+    },
+    {
+      "from": "corvi2023",
+      "to": "wang2023",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "durall2020",
+      "to": "cozzolino2024",
+      "relation": "builds-on",
+      "verified": "verified"
     },
     {
       "from": "ojha2023",
@@ -215,40 +227,40 @@
       "verified": "verified"
     },
     {
-      "from": "wang2020",
-      "to": "liu2024fatformer",
+      "from": "wang2023",
+      "to": "cozzolino2024",
       "relation": "builds-on",
-      "verified": "verified"
-    },
-    {
-      "from": "ojha2023",
-      "to": "liu2024fatformer",
-      "relation": "parallel",
-      "verified": "parallel"
-    },
-    {
-      "from": "wang2023dire",
-      "to": "ricker2024aeroblade",
-      "relation": "builds-on",
-      "verified": "verified"
-    },
-    {
-      "from": "corvi2023",
-      "to": "ricker2024aeroblade",
-      "relation": "inspired-by",
       "verified": "verified"
     },
     {
       "from": "cozzolino2024",
-      "to": "willi2026",
+      "to": "li2025",
       "relation": "builds-on",
-      "verified": "unverified"
+      "verified": "verified"
+    },
+    {
+      "from": "cozzolino2024",
+      "to": "koutlis2026",
+      "relation": "builds-on",
+      "verified": "verified"
     },
     {
       "from": "ojha2023",
-      "to": "willi2026",
-      "relation": "inspired-by",
-      "verified": "unverified"
+      "to": "wang2023",
+      "relation": "parallel",
+      "verified": "parallel"
+    },
+    {
+      "from": "li2025",
+      "to": "koutlis2026",
+      "relation": "parallel",
+      "verified": "parallel"
+    },
+    {
+      "from": "yu2019",
+      "to": "wang2020",
+      "relation": "parallel",
+      "verified": "parallel"
     }
   ]
 }

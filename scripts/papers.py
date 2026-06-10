@@ -19,6 +19,7 @@ paperId formats:
   s2:       an S2 id, "arXiv:2106.01342", "DOI:..", "CorpusId:.."
 """
 import argparse
+import http.client
 import json
 import os
 import sys
@@ -46,7 +47,8 @@ def _http_json(url, headers=None):
                 time.sleep(wait)
                 continue
             raise
-        except urllib.error.URLError as e:
+        except (urllib.error.URLError, ConnectionError, TimeoutError,
+                http.client.HTTPException) as e:
             wait = 2 ** attempt
             print(f"[network error {e}, retry in {wait}s]", file=sys.stderr)
             time.sleep(wait)
@@ -149,6 +151,34 @@ def oa_search(query, limit, from_year=None, to_year=None, sort="relevance",
     if OA_SORT.get(sort):
         params["sort"] = OA_SORT[sort]
     data = _http_json(f"{OA}/works?" + urllib.parse.urlencode(_oa_params(params)))
+    return [_oa_slim(w, with_abstract)
+            for w in (data.get("results") if data else []) or []]
+
+
+def oa_batch(ids, with_abstract=False):
+    """Fetch metadata for many OpenAlex work ids in chunked requests."""
+    out = []
+    sel = OA_FIELDS_ABS if with_abstract else OA_FIELDS
+    for i in range(0, len(ids), 40):
+        chunk = [w for w in ids[i:i + 40] if w]
+        if not chunk:
+            continue
+        data = _http_json(f"{OA}/works?" + urllib.parse.urlencode(_oa_params({
+            "filter": "openalex_id:" + "|".join(chunk),
+            "per_page": len(chunk), "select": sel})))
+        out += [_oa_slim(w, with_abstract)
+                for w in (data.get("results") if data else []) or []]
+        time.sleep(0.15)
+    return [p for p in out if p]
+
+
+def oa_citers(pid, limit, with_abstract=False, sort="citations"):
+    """Works that cite `pid`: most-cited (default), newest, or oldest first."""
+    order = {"recent": "publication_date:desc",
+             "oldest": "publication_date:asc"}.get(sort, "cited_by_count:desc")
+    data = _http_json(f"{OA}/works?" + urllib.parse.urlencode(_oa_params({
+        "filter": f"cites:{pid}", "per_page": limit, "sort": order,
+        "select": OA_FIELDS_ABS if with_abstract else OA_FIELDS})))
     return [_oa_slim(w, with_abstract)
             for w in (data.get("results") if data else []) or []]
 

@@ -33,7 +33,7 @@ WID = re.compile(r"W\d+")
 def resolve(node):
     """Return (openalex_id, set_of_referenced_work_ids) for a lineage node."""
     ident = None
-    for field in (node.get("url", ""), node.get("id", "")):
+    for field in (node.get("oa", ""), node.get("url", ""), node.get("id", "")):
         m = WID.search(field or "")
         if m:
             ident = m.group(0)

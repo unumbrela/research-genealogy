@@ -99,7 +99,12 @@ def build_graph(data, nodes):
 
     for nid, parents in incoming.items():
         if parents:
-            pid, rel = sorted(parents, key=lambda pr: yr(pr[0]))[0]
+            # primary parent = the most recent predecessor (prefer builds-on on
+            # ties) — hanging children off their nearest ancestor keeps the
+            # lineage a chain of ideas instead of a star around the founder
+            pid, rel = sorted(parents,
+                              key=lambda pr: (yr(pr[0]) if yr(pr[0]) != 9999
+                                              else -1, pr[1] == "builds-on"))[-1]
             primary[nid], primary_rel[nid] = pid, rel
             children[pid].append(nid)
     for nid, parents in incoming.items():
@@ -208,7 +213,8 @@ def render(data, nodes, term_w):
         # title + one-line gist
         t = clip(n.get("title") or "", avail)
         line("", cont + C(f"“{t}”", DIM))
-        desc = n.get("contribution") or n.get("problem")
+        prob, contrib = n.get("problem"), n.get("contribution")
+        desc = f"{prob} ⇒ {contrib}" if prob and contrib else (contrib or prob)
         if desc:
             line("", cont + "  " + clip(desc, avail - 2))
         for pid, arel in annotations.get(nid, []):

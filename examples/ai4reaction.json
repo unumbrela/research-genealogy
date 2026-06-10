@@ -1,0 +1,308 @@
+{
+  "field": "AI4Reaction（AI 驱动的化学反应预测 / 逆合成 / 自主化学）",
+  "_source": "Draft by scripts/genealogy.py with --alias multi-phrasing search (reaction prediction / retrosynthesis / yield prediction / LLM chemistry), refined per SKILL.md: 4 off-branch or redundant nodes dropped, 5 landmarks swapped in from _alternates/_frontier_candidates (Segler 2017, Molecular Transformer, robotic flow synthesis, ChemCrow, LLM predictive chemistry), summaries written from real abstracts. All metadata from OpenAlex, 2026-06.",
+  "nodes": [
+    {
+      "id": "satoh1995",
+      "oa": "W2046747992",
+      "title": "SOPHIA, a Knowledge Base-Guided Reaction Prediction System - Utilization of a Knowledge Base Derived from a Reaction Database",
+      "authors": "Hiroko Satoh et al.",
+      "year": 1995,
+      "venue": "J. Chem. Inf. Comput. Sci.",
+      "citations": 127,
+      "problem": "反应预测长期依赖人工编写规则的专家系统，知识获取是最大瓶颈",
+      "contribution": "SOPHIA：从反应数据库自动导出知识库来引导反应预测，预示了数据驱动路线",
+      "url": "https://doi.org/10.1021/ci00023a005"
+    },
+    {
+      "id": "rogers2010",
+      "oa": "W1988037271",
+      "title": "Extended-Connectivity Fingerprints",
+      "authors": "David Rogers et al.",
+      "year": 2010,
+      "venue": "J. Chem. Inf. Model.",
+      "citations": 7563,
+      "problem": "传统拓扑指纹为子结构/相似性搜索设计，并不适合构效关系建模",
+      "contribution": "ECFP 扩展连通性指纹，成为化学机器学习的标准分子表示（表示层基础设施）",
+      "url": "https://doi.org/10.1021/ci100050t"
+    },
+    {
+      "id": "kayala2011",
+      "oa": "W1973166400",
+      "title": "Learning to Predict Chemical Reactions",
+      "authors": "Matthew A. Kayala et al.",
+      "year": 2011,
+      "venue": "J. Chem. Inf. Model.",
+      "citations": 211,
+      "problem": "反应预测的三种途径（物理定律/规则系统/归纳学习）中，机器学习路线尚未建立",
+      "contribution": "首批用统计机器学习预测基元反应步的工作，开启 ML 反应预测路线",
+      "url": "https://doi.org/10.1021/ci200207y"
+    },
+    {
+      "id": "raccuglia2016",
+      "oa": "W2347129741",
+      "title": "Machine-learning-assisted materials discovery using failed experiments",
+      "authors": "Paul Raccuglia et al.",
+      "year": 2016,
+      "venue": "Nature",
+      "citations": 1703,
+      "problem": "实验记录本里大量「失败实验」数据从未被利用（摘要未公开，依标题/正文定位）",
+      "contribution": "用失败实验数据训练模型指导水热合成，机器学习超越人类直觉，点燃数据驱动化学",
+      "url": "https://doi.org/10.1038/nature17439"
+    },
+    {
+      "id": "coley2017",
+      "oa": "W2606363443",
+      "title": "Prediction of Organic Reaction Outcomes Using Machine Learning",
+      "authors": "Connor W. Coley et al.",
+      "year": 2017,
+      "venue": "ACS Central Science",
+      "citations": 816,
+      "problem": "合成设计软件发展40年仍未普及——模板推荐的反应在实验室常常失败",
+      "contribution": "从反应数据库学习给候选产物排序，确立「模板+ML」的前向反应结果预测范式",
+      "url": "https://doi.org/10.1021/acscentsci.7b00064"
+    },
+    {
+      "id": "segler2017",
+      "oa": "W2580919858",
+      "title": "Neural-Symbolic Machine Learning for Retrosynthesis and Reaction Prediction",
+      "authors": "Marwin Segler et al.",
+      "year": 2017,
+      "venue": "Chem. Eur. J.",
+      "citations": 612,
+      "problem": "规则式专家系统忽略分子上下文，导致反应性冲突、模板失效",
+      "contribution": "神经网络+符号规则的混合逆合成/反应预测，通往其后 Nature 的 MCTS 合成规划",
+      "url": "https://doi.org/10.1002/chem.201605499"
+    },
+    {
+      "id": "liu2017",
+      "oa": "W2621742623",
+      "title": "Retrosynthetic Reaction Prediction Using Neural Sequence-to-Sequence Models",
+      "authors": "Bowen Liu et al.",
+      "year": 2017,
+      "venue": "ACS Central Science",
+      "citations": 585,
+      "problem": "基于模板/规则的逆合成受限于模板覆盖范围与上下文冲突",
+      "contribution": "把逆合成当作 SMILES 序列到序列翻译，端到端模型开启「文本翻译」路线",
+      "url": "https://doi.org/10.1021/acscentsci.7b00303"
+    },
+    {
+      "id": "ahneman2018",
+      "oa": "W2785942661",
+      "title": "Predicting reaction performance in C–N cross-coupling using machine learning",
+      "authors": "Derek T. Ahneman et al.",
+      "year": 2018,
+      "venue": "Science",
+      "citations": 1097,
+      "problem": "合成反应在多维化学空间中的性能（产率）难以先验预测",
+      "contribution": "高通量实验+随机森林预测 C–N 偶联产率，确立「产率/条件预测」分支",
+      "url": "https://doi.org/10.1126/science.aar5169"
+    },
+    {
+      "id": "schwaller2019",
+      "oa": "W2947423323",
+      "title": "Molecular Transformer: A Model for Uncertainty-Calibrated Chemical Reaction Prediction",
+      "authors": "Philippe Schwaller et al.",
+      "year": 2019,
+      "venue": "ACS Central Science",
+      "citations": 852,
+      "problem": "前向反应预测仍依赖模板或图规则，泛化能力与不确定度估计不足",
+      "contribution": "Molecular Transformer：纯文本 Transformer 反应预测+不确定度校准，成为该任务新基线",
+      "url": "https://doi.org/10.1021/acscentsci.9b00576"
+    },
+    {
+      "id": "coley2019",
+      "oa": "W2968071222",
+      "title": "A robotic platform for flow synthesis of organic compounds informed by AI planning",
+      "authors": "Connor W. Coley et al.",
+      "year": 2019,
+      "venue": "Science",
+      "citations": 1082,
+      "problem": "AI 合成规划停在纸面，与真实合成执行之间存在断层",
+      "contribution": "AI 规划+机器人流动化学平台闭环合成有机分子，开启「自动化执行」分支",
+      "url": "https://doi.org/10.1126/science.aax1566"
+    },
+    {
+      "id": "boiko2023",
+      "oa": "W4389991792",
+      "title": "Autonomous chemical research with large language models",
+      "authors": "Daniil A. Boiko et al.",
+      "year": 2023,
+      "venue": "Nature",
+      "citations": 787,
+      "problem": "LLM 能否自主完成「设计—执行—分析」的完整科研闭环",
+      "contribution": "Coscientist：GPT-4 驱动的自主化学研究系统，自主规划并执行钯催化偶联实验",
+      "url": "https://doi.org/10.1038/s41586-023-06792-0"
+    },
+    {
+      "id": "bran2024",
+      "oa": "W4396723768",
+      "title": "Augmenting large language models with chemistry tools",
+      "authors": "Andres M. Bran et al.",
+      "year": 2024,
+      "venue": "Nature Machine Intelligence",
+      "citations": 563,
+      "problem": "通用 LLM 缺乏化学专业知识与外部工具接口，化学任务表现差",
+      "contribution": "ChemCrow：LLM+18 种化学工具的代理框架，横跨有机合成、药物发现与材料设计",
+      "url": "https://doi.org/10.1038/s42256-024-00832-8"
+    },
+    {
+      "id": "jablonka2024",
+      "oa": "W4391561379",
+      "title": "Leveraging large language models for predictive chemistry",
+      "authors": "Kevin Maik Jablonka et al.",
+      "year": 2024,
+      "venue": "Nature Machine Intelligence",
+      "citations": 314,
+      "problem": "化学小数据场景需要为每个任务定制专门模型与领域知识，门槛高",
+      "contribution": "微调 GPT-3 在分类/回归/逆设计上比肩甚至超越专用模型——「LLM 即化学预测器」",
+      "url": "https://doi.org/10.1038/s42256-023-00788-1"
+    },
+    {
+      "id": "song2025",
+      "oa": "W4408247476",
+      "title": "A Multiagent-Driven Robotic AI Chemist Enabling Autonomous Chemical Research on Demand",
+      "authors": "Tao Song et al.",
+      "year": 2025,
+      "venue": "JACS",
+      "citations": 116,
+      "problem": "单一 LLM 代理难以覆盖自主化学研究全流程所需的多角色协作",
+      "contribution": "多代理驱动的机器人 AI 化学家：文献调研→实验设计→执行→表征全链路按需自主",
+      "url": "https://doi.org/10.1021/jacs.4c17738"
+    },
+    {
+      "id": "zhang2025",
+      "oa": "W4411900553",
+      "title": "Large language models to accelerate organic chemistry synthesis",
+      "authors": "Yu Zhang et al.",
+      "year": 2025,
+      "venue": "Nature Machine Intelligence",
+      "citations": 25,
+      "problem": "化学合成实践仍以费时费钱的试错流程为主，亟需先进 AI 助手",
+      "contribution": "把 LLM 织入有机合成规划工作流，加速反应预测与路线设计",
+      "url": "https://doi.org/10.1038/s42256-025-01066-y"
+    }
+  ],
+  "edges": [
+    {
+      "from": "satoh1995",
+      "to": "kayala2011",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "rogers2010",
+      "to": "coley2017",
+      "relation": "inspired-by",
+      "verified": "verified"
+    },
+    {
+      "from": "kayala2011",
+      "to": "coley2017",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "kayala2011",
+      "to": "segler2017",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "raccuglia2016",
+      "to": "ahneman2018",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "coley2017",
+      "to": "liu2017",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "segler2017",
+      "to": "liu2017",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "liu2017",
+      "to": "schwaller2019",
+      "relation": "builds-on",
+      "verified": "unverified"
+    },
+    {
+      "from": "coley2017",
+      "to": "schwaller2019",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "coley2017",
+      "to": "coley2019",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "ahneman2018",
+      "to": "jablonka2024",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "schwaller2019",
+      "to": "jablonka2024",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "coley2019",
+      "to": "boiko2023",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "ahneman2018",
+      "to": "boiko2023",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "schwaller2019",
+      "to": "bran2024",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "boiko2023",
+      "to": "bran2024",
+      "relation": "parallel",
+      "verified": "cross-cite"
+    },
+    {
+      "from": "boiko2023",
+      "to": "song2025",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "boiko2023",
+      "to": "zhang2025",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "bran2024",
+      "to": "song2025",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "song2025",
+      "to": "zhang2025",
+      "relation": "parallel",
+      "verified": "parallel"
+    }
+  ]
+}
