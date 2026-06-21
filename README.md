@@ -12,46 +12,41 @@ Output is a terminal **ASCII genealogy tree** (drawn with `--` connectors) plus 
 short narrative — the relationships are **non-linear** (branches & parallel
 lines), not a flat timeline.
 
-*(real run; colored in a terminal — see `examples/generated-image-detection.md`)*
+*(featured example — full report: [`examples/diffusion-models-genealogy.md`](examples/diffusion-models-genealogy.md))*
+
+**「扩散模型图像生成」发展历程 · 21 篇关键论文 · 2011 → 2025 · 引用边 25 ✓ / 1 ∥ / 2 ⚠**
+
+![扩散模型图像生成的发展历程（2011→2025）：5 条技术路线的横向时间线谱系，引用经 OpenAlex/Semantic Scholar 核验](assets/diffusion-genealogy.png)
+
+The same genealogy is what the skill actually emits as a **terminal ASCII tree** (excerpt):
 
 ```
-      ╭────────────────────────────────────────────────────────╮
-      │ 生成图像检测 (AI-Generated Image Detection)            │
-      │ 12 papers  ·  2018 → 2026                              │
-      ╰────────────────────────────────────────────────────────╯
-      │
- 2018 │  ● Francesco Marra et al.   █████░░  390     ← 奠基：GAN假图取证基准
-      │     │
- 2019 │     └── ◉ Ning Yu et al. ✓   █████░░  426    · 「GAN指纹」真伪判别+来源归因
-      │         │
- 2020 │         └── ○ Ricard Durall et al. ✓   █████░░  407   ← 频域路线：上采样频谱伪影
-      │
- 2019 │  ● Xu Zhang et al.   ██████░  498            · AutoGAN 模拟伪影，免目标GAN
-      │     │
- 2020 │     └── ◉ Sheng-Yu Wang et al. ✓   ██████░  996   ← CNNDetection 最强基线
-      │           → builds-on: Francesco Marra   ∥ parallel: Ning Yu
-      │
- 2022 │  ● Aditya Ramesh et al.   ███████ 2280       ← 转折：DALL·E 2 引爆扩散时代
-      │     │
- 2023 │     ├┈┈ ○ Utkarsh Ojha et al. ✓   █████░░  272    · 冻结CLIP特征通用检测
-      │     │
- 2023 │     └┈┈ ○ Riccardo Corvi et al. ✓   █████░░  236  · GAN取证经验迁移到扩散
-      │         │
- 2023 │         └── ○ Zhendong Wang et al. ✓   █████░░  224  · DIRE 重建误差路线  ∥ Ojha
-      │             │
- 2024 │             └── ★ Davide Cozzolino et al. ✦NEW ✓   ████░░░  85  · CLIP检测刷新上限
-      │                 │
- 2025 │                 ├── ★ Yixuan Li et al. ✦NEW ✓   ██░░░░░  10   · FakeBench 可解释检测
- 2026 │                 └── ★ Christos Koutlis et al. ✦NEW ✓  ·······  0  · 最新综述
+      ╭──────────────────────────────────────────────────────────────╮
+      │ 扩散模型图像生成 (Diffusion Models)  ·  21 papers · 2011 → 2025 │
+      ╰──────────────────────────────────────────────────────────────╯
+ 2011 │ ● Vincent ─ score matching → NCSN (2019) → ◉ Score-SDE (2020) ✓   分数/SDE 总纲
+ 2015 │ ● Sohl-Dickstein ─ 扩散奠基（非平衡热力学）
+ 2020 │   └─ ◉ Ho — DDPM ✓   引爆点：扩散追平 GAN   → builds-on: Vincent
+ 2020 │        ├─ ○ J. Song — DDIM ✓  确定性快速采样 → DPM-Solver++ · Consistency
+ 2021 │        └─ ◉ Dhariwal ✓   ⇒ supersedes BigGAN (2018)
+ 2022 │             ├─ ★ Ho&Salimans — CFG ✓  文生图总开关 → Imagen ✓
+ 2022 │             ├─ ◉ Rombach — LDM / Stable Diffusion ✓  （VQ-VAE + DDPM 汇合）
+ 2023 │             │   ├─ ★ Peebles — DiT ✓  Transformer 骨干+scaling   ∥ ControlNet ✓
+ 2024 │             │   │   ├─ ★ Esser — SD3 ✓   rectified flow 新范式
+ 2024 │             │   │   └─ ★ VAR ✓   自回归「下一分辨率」反超扩散
+ 2025 │             │   │         └┈ ★ Janus-Pro ⚠   统一多模态生成（最新·引用待索引）
+ 2022 │             └┈ ◉ Ramesh — DALL·E 2 ✓   unCLIP 路线
 
-      ● founder  ◉ hub  ★ frontier  ·  ├── builds-on  ├┈┈ inspired-by  ∥ parallel
-      citations: ✓ 16 verified  ⚠ 0 to review
+      ● founder ◉ hub ★ frontier · ├─ builds-on ├┈ inspired-by ∥ parallel ⇒ supersedes
+      citations: ✓ 25 verified · ∥ 1 parallel · ⚠ 2 (近年论文参考文献待上游索引)
 ```
 
 > A left **year axis**, role markers (**●** founder / **◉** hub / **★** frontier),
 > **relation-coded branches** (`├──` builds-on, `├┈┈` inspired-by), citation
-> bars, and `∥ parallel` cross-links. The frontier pass guarantees recent
-> (2024+) work is included, not just the classics.
+> bars, `∥ parallel` / `⇒ supersedes` cross-links, and per-edge `✓`/`⚠`
+> verification marks. The frontier pass guarantees recent work (here through the
+> 2024–2025 autoregressive / unified-multimodal wave) is included, not just the
+> classics. *(See also: [`generated-image-detection.md`](examples/generated-image-detection.md), [`ai4reaction-genealogy.md`](examples/ai4reaction-genealogy.md).)*
 
 ## Why this is different
 
@@ -121,6 +116,27 @@ like "AI4Reaction" included), builds a citation-grounded draft, refines it,
 and delivers a **full report** — genealogy tree + era-by-era narrative +
 verified paper list — saved as markdown.
 
+### Worked example: "扩散模型 / Diffusion Models"（首页配图即此例）
+
+From *扩散模型图像生成*, the skill pulled a 90-paper relevance core and, after
+refinement, a **21-node genealogy across 5 lanes spanning 2011 → 2025** (founding
+score/diffusion theory → DDPM → sampling-acceleration & guidance lines → the
+text-to-image trio → DiT / ControlNet / SD3 → the 2024–2025 **autoregressive
+(VAR) / unified-multimodal (Janus-Pro)** wave) — full report →
+[`examples/diffusion-models-genealogy.md`](examples/diffusion-models-genealogy.md);
+figure & prompt → [`examples/diffusion-models-figure-prompt.md`](examples/diffusion-models-figure-prompt.md).
+
+It is also the cleanest illustration of the **honesty rule**. `verify.py` reports
+**25 ✓ / 1 ∥ / 2 ⚠**, and the verification upgrade earns that: duplicate-record
+reconciliation flips false ⚠ (BigGAN, Sohl-Dickstein — cited under a different
+work-id) to ✓ with no hand-aligning, and the Semantic Scholar fallback confirms
+edges OpenAlex left empty (VQ-VAE; **VAR's real citations to VQ-VAE + DiT**). The
+2 remaining ⚠ are honest *"data not indexed yet"*, not invention — DPM-Solver++'s
+2025 reprint and the very recent **Janus-Pro (2025)** have no reference list
+upstream. And there is **no fabricated 2026 node**: OpenAlex/S2 haven't indexed
+substantive 2026 image-generation landmarks yet, so the genealogy honestly stops
+at 2025.
+
 ### Worked example: "调研搜索 AI4Reaction 方向的发展历程"
 
 From that one ask, the skill derived 4 English phrasings (reaction prediction /
@@ -156,42 +172,6 @@ The same standard applies to the image-detection example:
 [`examples/generated-image-detection.md`](examples/generated-image-detection.md)
 (2018 GAN 取证 → 频域/泛化双路线 → 扩散冲击三路并行 → CLIP/可解释前沿,
 16/16 edges verified).
-
-### Worked example: "扩散模型 / Diffusion Models" — and what *honest* verification looks like
-
-From the direction *扩散模型图像生成*, the skill derived 4 English phrasings (DDPM /
-score-based SDE / latent text-to-image / diffusion transformer), pulled a pool of
-156 candidates (90-paper relevance core), and after refinement produced a 14-node
-genealogy spanning **2011 → 2025**, written up in full →
-[`examples/diffusion-models-genealogy.md`](examples/diffusion-models-genealogy.md):
-
-```
- 2015 │  ● Sohl-Dickstein    扩散框架奠基（非平衡热力学）
- 2020 │     ├── ◉ Ho (DDPM) ✓        引爆点：扩散追平 GAN
- 2021 │     │   ├── ○ Dhariwal ✓       ⇒ supersedes BigGAN，FID 超越
- 2022 │     │   │   ├── ◉ Rombach ✓      LDM / Stable Diffusion（潜空间 + 文本）
- 2023 │     │   │   │   ├── ★ Peebles (DiT) ✓    Transformer 骨干 + scaling 律
- 2023 │     │   │   │   ├── ★ Zhang (ControlNet) ✓  精确空间可控
- 2025 │     │   │   │   └── ★ Lu (DPM-Solver++) ✓   ~15 步快速采样
- 2022 │     │   │   └┈┈ ◉ Ramesh (DALL·E 2) ⚠   ∥ parallel: Rombach
- 2020 │     └── ○ Song (Score-SDE) ✓    理论总纲：统一 score + 扩散
-```
-
-This run is also the best illustration of the project's honesty rule — and of
-what the **verification upgrade** buys you. The *first* pass returned
-**13 ✓ · 1 ∥ · 2 ⚠**, where the two ⚠ were genuine **OpenAlex data gaps**:
-VQ-VAE (van den Oord 2017) and DALL·E 2 (Ramesh 2022) both have an **empty
-`referenced_works` list upstream**, plus 3 *false* ⚠ from duplicate records
-(BigGAN / Sohl-Dickstein cited under a different work-id than the node's), and
-OpenAlex's DDPM abstract is polluted by an unrelated repo's README.
-
-The current pipeline handles all of these automatically: duplicate-record
-reconciliation flips the false ⚠ to ✓ without hand-aligning ids, the Semantic
-Scholar fallback recovers VQ-VAE / DALL·E 2's references, and the polluted DDPM
-abstract is repaired from S2 — so `verify.py` now reports **15 ✓ / 1 ∥** with no
-hand-holding (S2's keyless pool is throttled, so the two S2-recovered edges may
-fall back to an honest ⚠ when it's unreachable). The tool still leaves a true
-gap as ⚠ rather than laundering it — it just no longer cries wolf.
 
 ### One command (fast path)
 
