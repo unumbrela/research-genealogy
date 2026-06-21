@@ -230,6 +230,32 @@
       "problem": "扩散的随机加噪路径 + U-Net 骨干在高分辨率文生图上的可扩展性与采样效率仍受限",
       "contribution": "提出 SD3：用 rectified flow（直线化的 flow matching）替代扩散随机路径、配多模态 MM-DiT 骨干，刷新高分辨率文生图的 scaling 与质量，代表 2024 的 flow-matching 新范式",
       "url": "http://arxiv.org/abs/2403.03206"
+    },
+    {
+      "id": "var2024",
+      "oa": "W4415796345",
+      "title": "Visual Autoregressive Modeling: Scalable Image Generation via Next-Scale Prediction",
+      "authors": "Yi Jiang et al.",
+      "year": 2024,
+      "venue": "NeurIPS",
+      "citations": 38,
+      "arxiv": "2404.02905",
+      "problem": "扩散主导图像生成，自回归(AR)模型在图像上长期逊于扩散，且 raster-scan 逐 token 预测低效、扩展性差",
+      "contribution": "提出 VAR：把图像自回归重定义为「由粗到细的 next-scale（下一分辨率）预测」，首次让 AR 模型在 ImageNet 上超越扩散，并展现清晰 scaling 律与零样本泛化——开启自回归图像生成新范式",
+      "url": "http://arxiv.org/abs/2404.02905"
+    },
+    {
+      "id": "januspro2025",
+      "oa": "W4406975803",
+      "title": "Janus-Pro: Unified Multimodal Understanding and Generation with Data and Model Scaling",
+      "authors": "Xiaokang Chen et al.",
+      "year": 2025,
+      "venue": "arXiv",
+      "citations": 10,
+      "arxiv": "2501.17811",
+      "problem": "图像理解(看图)与图像生成(画图)长期分属两类模型架构，难以统一在一个多模态模型中",
+      "contribution": "提出 Janus-Pro：解耦视觉编码 + 自回归框架，把多模态理解与图像生成统一进单一模型并做数据/规模扩展，代表「统一多模态生成」前沿",
+      "url": "http://arxiv.org/abs/2501.17811"
     }
   ],
   "edges": [
@@ -382,6 +408,24 @@
       "to": "controlnet2023",
       "relation": "parallel",
       "verified": "parallel"
+    },
+    {
+      "from": "oord2017",
+      "to": "var2024",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "peebles2023",
+      "to": "var2024",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "var2024",
+      "to": "januspro2025",
+      "relation": "inspired-by",
+      "verified": "unverified"
     }
   ]
 }

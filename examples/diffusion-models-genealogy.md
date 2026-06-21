@@ -1,11 +1,11 @@
 # 扩散模型图像生成 发展历程
 
-> 从「学习去噪 = 估计 score」的理论火种，到 DDPM 引爆、连续时间统一、潜空间文生图三雄并起，再到 Transformer 骨干、精确可控与 flow-matching 新范式 · **2011–2024 · 19 篇关键论文 · 4 条技术路线** · 引用边经 OpenAlex/S2 核验（**23 ✓ · 1 ∥ · 1 ⚠**，⚠ 为重印记录参考文献缺失所致，下文说明）
+> 从「学习去噪 = 估计 score」的理论火种，到 DDPM 引爆、连续时间统一、潜空间文生图三雄并起，再到 Transformer 骨干、精确可控、flow-matching 新范式，直至**自回归范式回潮与统一多模态生成** · **2011–2025 · 21 篇关键论文 · 5 条技术路线** · 引用边经 OpenAlex/S2 核验（**25 ✓ · 1 ∥ · 2 ⚠**，⚠ 为近年论文参考文献尚未被索引所致，下文说明）
 
 ## 全景谱系树
 
 ```
-扩散模型图像生成 (Diffusion Models for Image Generation) · 19 papers · 2011 → 2024
+扩散模型图像生成 (Diffusion Models for Image Generation) · 21 papers · 2011 → 2025
 
 分数 / SDE 路线
  2011 ● Vincent  score matching ↔ 去噪自编码器
@@ -29,13 +29,15 @@
               ├─ ★ Rombach et al. — LDM / Stable Diffusion (2022) ✓
               │     → builds-on: VQ-VAE + DDPM（两根汇合）
               │     ├─ ★ Peebles & Xie — DiT (2023) ✓   Transformer 骨干 + scaling
-              │     │     └─ ★ Esser et al. — SD3 (2024) ✓   rectified flow 新范式
+              │     │     ├─ ★ Esser et al. — SD3 (2024) ✓   rectified flow 新范式
+              │     │     └─ ★ Yi Jiang et al. — VAR (2024) ✓   自回归「下一分辨率」超越扩散
+              │     │           └┄ inspired-by → ★ Janus-Pro (2025) ⚠   统一多模态生成
               │     └─ ★ Zhang et al. — ControlNet (2023) ✓   精确空间可控
               │          ∥ parallel: DiT
               └┄ inspired-by → ★ Ramesh et al. — DALL·E 2 (2022) ✓   unCLIP 路线
 
 ● founder  ◉ hub  ★ frontier  ·  ├─ builds-on  └┄ inspired-by  ∥ parallel  ⇒ supersedes
-citations: ✓ 23 verified · ∥ 1 parallel · ⚠ 1 to review   (run verify.py)
+citations: ✓ 25 verified · ∥ 1 parallel · ⚠ 2 to review   (run verify.py)
 ```
 
 > 节点角色：**●** 奠基 / **◉** 枢纽 / **★** 前沿；关系：`├─` builds-on、`└┄` inspired-by、`∥` parallel、`⇒` supersedes。每条 builds-on 边都经 `verify.py` 对照 OpenAlex/Semantic Scholar 的真实参考文献核验。完整渲染见 `render_tree.py examples/diffusion-models.json`。
@@ -78,21 +80,26 @@ citations: ✓ 23 verified · ∥ 1 parallel · ⚠ 1 to review   (run verify.py
 - **架构骨干 → Peebles & Xie (2023, DiT)**：用 **Transformer 替换 U-Net** 在 latent patch 上做扩散，给出"算力越大、FID 越低"的清晰 **scaling 律**（builds-on LDM ✓），直接成为 SD3、Sora 的骨干选择。
 - **精确可控 → Zhang et al. (2023, ControlNet)**：冻结 SD、旁路可训练副本注入边缘/姿态/深度等空间条件，让生成"指哪打哪"（builds-on LDM ✓）。DiT 与 ControlNet 同期独立、互不引用，是一对 **∥ parallel**（架构 vs 可控两条正交努力）。
 - **新范式 → Esser et al. (2024, SD3 / Rectified Flow)**：用 **rectified flow（直线化的 flow matching）** 替代扩散的随机加噪路径、配**多模态 MM-DiT** 骨干（builds-on DiT / LDM ✓）——代表 2024 起"flow matching 取代/统一扩散"的新方向。
+- **自回归回潮 → Yi Jiang et al. (2024, VAR)**：把图像自回归重定义为**"由粗到细的 next-scale（下一分辨率）预测"**，而非 raster-scan 逐 token——首次让**自回归模型在 ImageNet 上反超扩散**，并展现 GPT 式 scaling 律（builds-on VQ-VAE 的离散 tokenizer + DiT ✓，并把 SD3 当作要超越的扩散基线）。这把"扩散 vs 自回归"重新摆上桌面。
+- **统一多模态生成 → Janus-Pro (2025)**：沿 VAR 开的自回归路线（`└┄ inspired-by`），用**解耦视觉编码 + 自回归框架**把"看图(理解)"与"画图(生成)"统一进单一多模态模型并做规模扩展——指向 2025 的"统一多模态生成"前沿。
+
+> **关于"2026 最新"**：截至 2026-06，OpenAlex / Semantic Scholar **尚未索引到有分量的 2026 图像生成里程碑**（新论文有数月至一年的索引与引用滞后，检索 2026 只返回零引用的离题结果）。本工具的底线是**只收录可检索、可核验的真实论文，绝不为"凑年份"杜撰**——因此谱系当前最新到 **2025（Janus-Pro）**。若你手上有具体的 2026 论文（标题 / arXiv id），告诉我，我可精确拉取并接入。
 
 ### 诚实性说明（核验全景）
-本谱系 25 条关系：**23 条 builds-on/supersedes/inspired-by 已核验为真实引用、1 条 parallel、仅 1 条 ⚠**。这一高核验率部分来自工具本轮升级的**重复记录 / 跨源和解**：
+本谱系 28 条关系：**25 条 builds-on/supersedes/inspired-by 已核验为真实引用、1 条 parallel、仅 2 条 ⚠**。这一高核验率部分来自工具本轮升级的**重复记录 / 跨源和解**：
 - OpenAlex 常把同一篇论文存成多个 work-id，早期 BigGAN、Sohl-Dickstein、NCSN 等被引用的记录 id 与节点不一致 → `verify.py` 现按**归一化标题/DOI**自动和解，无需手工对齐即转 ✓；
-- VQ-VAE、Imagen、CFG 等论文的 OpenAlex 参考文献稀疏/缺失时，自动**回退 Semantic Scholar** 取参考文献核验；
-- 唯一遗留 **⚠：DPM-Solver++ builds-on DDIM**——这是真实引用，但其 OpenAlex 记录是 2025 期刊**重印**版、参考文献列表缺失，S2 keyless 池又恰被限流，故工具**如实保留 ⚠ 而非洗白**。这正是 research-genealogy 的底线：**箭头可信，靠的是数据而非记忆**。
+- VQ-VAE、Imagen、CFG、**VAR** 等论文的 OpenAlex 参考文献稀疏/缺失时，自动**回退 Semantic Scholar** 取参考文献核验（VAR 的 builds-on VQ-VAE / DiT 即由此确认）；
+- 两处遗留 **⚠**，都不是杜撰、而是**索引滞后**：**① DPM-Solver++ builds-on DDIM**——真实引用，但其 OpenAlex 记录是 2025 期刊**重印**版、参考文献缺失，S2 keyless 池又被限流；**② Janus-Pro(2025) 的 inspired-by 来源**——这篇很新的论文在 OpenAlex 与 S2 中**都还没有参考文献列表**，故其谱系关系标为 `inspired-by` 并**如实保留 ⚠**，未强行断言引用。这正是 research-genealogy 的底线：**箭头可信，靠的是数据而非记忆**；越靠近前沿，⚠ 越是诚实的"数据未到"而非"作者瞎编"。
 
 （另注：OpenAlex 对 DDPM 摘要被无关仓库 README 污染、对 DDIM/Consistency/SD3 引用数因重复记录而低估——前者摘要已据引用它的论文据实改写，后者引用条仅作视觉参考，节点 id 与引用边均真实。）
 
 ### 开放问题
 1. **少步生成的质量天花板**：Consistency / 蒸馏已把采样压到几步乃至一步，但少步下的多样性、细节与文本对齐能否追平多步，仍未解决。
-2. **flow matching vs 扩散**：SD3 的 rectified flow 用直线路径换效率，flow matching 是否会**统一甚至取代**扩散的随机路径，是 2024 起最大的范式之争。
-3. **可控性的统一接口**：ControlNet 之后条件适配器爆发，如何把空间/语义/风格/主体条件**统一、可组合**而非各做各的，尚无定论。
-4. **scaling 律向高维模态外推**：DiT 的 scaling 在图像上清晰，但视频 / 3D / 4D 等高维模态下的数据-算力-架构最优配比仍待验证。
-5. **理论回填**：Score-SDE 给了优雅的连续时间框架，但 guidance、潜空间压缩、rectified flow 等"工程加分项"尚未完全纳入统一理论。
+2. **三种范式之争（扩散 / flow matching / 自回归）**：SD3 的 rectified flow 用直线路径换效率，VAR 又让自回归"下一分辨率"反超扩散——扩散、flow matching、自回归三条路线谁主沉浮，或如何融合，是 2024 起最大的范式之争。
+3. **统一多模态生成**：Janus-Pro 等把"理解 + 生成"塞进单一自回归模型，但生成质量与专用扩散/文生图模型相比仍有差距，统一架构能否同时做到"看得懂"和"画得好"尚无定论。
+4. **可控性的统一接口**：ControlNet 之后条件适配器爆发，如何把空间/语义/风格/主体条件**统一、可组合**而非各做各的，尚无定论。
+5. **scaling 律向高维模态外推**：DiT 的 scaling 在图像上清晰，但视频 / 3D / 4D 等高维模态下的数据-算力-架构最优配比仍待验证。
+6. **理论回填**：Score-SDE 给了优雅的连续时间框架，但 guidance、潜空间压缩、rectified flow 等"工程加分项"尚未完全纳入统一理论。
 
 ## 论文清单
 
@@ -117,9 +124,11 @@ citations: ✓ 23 verified · ∥ 1 parallel · ⚠ 1 to review   (run verify.py
 | 2023 | [Zhang et al. — Adding Conditional Control to T2I Diffusion (ControlNet)](http://arxiv.org/abs/2302.05543) | 3589 | frontier | ✓ ∥ |
 | 2023 | [Y. Song et al. — Consistency Models](http://arxiv.org/abs/2303.01469) | 26\* | frontier | ✓ |
 | 2024 | [Esser et al. — Scaling Rectified Flow Transformers (SD3)](http://arxiv.org/abs/2403.03206) | 86\* | frontier | ✓ |
+| 2024 | [Jiang et al. — Visual Autoregressive Modeling: Next-Scale Prediction (VAR)](http://arxiv.org/abs/2404.02905) | 38\* | frontier | ✓ |
+| 2025 | [Chen et al. — Janus-Pro: Unified Multimodal Understanding and Generation](http://arxiv.org/abs/2501.17811) | 10\* | frontier | ⚠ |
 
-> \* DDIM / Consistency / SD3 / DPM-Solver++ 的引用数被 OpenAlex 因重复记录低估（真实影响远高于此）；此处只作视觉参考，节点身份与引用边均真实可核验。
+> \* DDIM / Consistency / SD3 / VAR / Janus-Pro / DPM-Solver++ 的引用数被 OpenAlex 因重复记录或索引滞后低估（真实影响远高于此）；此处只作视觉参考，节点身份与引用边均真实可核验。
 
 ---
 
-*本报告由 [research-genealogy](https://github.com/unumbrela/research-genealogy) skill 生成：草稿管线（多遍检索 + 引用雪球 + 领域内打分 + 传递归约）产出于 OpenAlex 真实元数据，经人工精炼（补入 NCSN / DDIM / CFG / Consistency / Imagen / SD3、按真实摘要改写、关系重标）并以 `verify.py`（重复记录 / Semantic Scholar 跨源和解）对照真实引用核验。数据快照：2026-06。*
+*本报告由 [research-genealogy](https://github.com/unumbrela/research-genealogy) skill 生成：草稿管线（多遍检索 + 引用雪球 + 领域内打分 + 传递归约）产出于 OpenAlex 真实元数据，经人工精炼（补入 NCSN / DDIM / CFG / Consistency / Imagen / SD3 / VAR / Janus-Pro、按真实摘要改写、关系重标）并以 `verify.py`（重复记录 / Semantic Scholar 跨源和解）对照真实引用核验。数据快照：2026-06。*

@@ -22,16 +22,17 @@
 
 ## 二、提示词正文（直接复制）
 
-请生成一张**适合论文发表的科研流程图**，主题是"**扩散模型图像生成的发展历程（2011→2024）**"，强调**脉络清晰、引用可核验的科学严谨性**。
+请生成一张**适合论文发表的科研流程图**，主题是"**扩散模型图像生成的发展历程（2011→2025）**"，强调**脉络清晰、引用可核验的科学严谨性**。
 
-采用**从左到右的横向时间线布局**，顶部是一条**年代轴**：2011 · 2015 · 2019–2020 · 2021–2022 · 2023–2024。画面纵向分为 **4 条水平泳道**，每条泳道是一条技术路线，自上而下：
+采用**从左到右的横向时间线布局**，顶部是一条**年代轴**：2011 · 2015 · 2019–2020 · 2021–2022 · 2023 · 2024 · 2025。画面纵向分为 **5 条水平泳道**，每条泳道是一条技术路线，自上而下：
 
 - **泳道① 分数 / SDE 路线**：Vincent(score matching) → NCSN → Score-SDE；
 - **泳道② 扩散主干 + 采样加速**：Sohl-Dickstein(扩散奠基) → DDPM(引爆点，画成高亮枢纽) → DDIM → DPM-Solver++ → Consistency；
 - **泳道③ 潜空间文生图**：VAE → VQ-VAE → LDM/Stable Diffusion，其右侧并排 DALL·E 2 与 Imagen 三个文生图模型图标；
-- **泳道④ 引导·架构·可控·新范式**：classifier guidance(Dhariwal) → CFG → ；DiT 与 ControlNet 并列 → SD3(rectified flow)。
+- **泳道④ 引导·架构·可控·新范式**：classifier guidance(Dhariwal) → CFG → ；DiT 与 ControlNet 并列 → SD3(rectified flow)；
+- **泳道⑤ 自回归回潮 + 统一多模态（最新前沿）**：VAR(下一分辨率自回归, 2024) → Janus-Pro(统一多模态, 2025，画在最右端、标"最新"，并用**橙色虚线小徽标**标注"⚠ 引用待索引")。
 
-每个节点是一个**极简扁平模型图标 + 一个简短英文标签**（DDPM、DDIM、Score-SDE、NCSN、DPM-Solver++、Consistency、VAE、VQ-VAE、LDM/SD、DALL·E2、Imagen、CFG、DiT、ControlNet、SD3）。用**细线实箭头**沿泳道从左到右串联表示"在其基础上构建(builds-on)"；用**竖向虚线**连接同期并行的工作（如 LDM ∥ DALL·E2 ∥ Imagen，以及 DiT ∥ ControlNet）；用一条**橙色粗箭头**从扩散主干指向左下角的 GAN(BigGAN) 图标并标注"⇒ 超越/supersedes"。
+每个节点是一个**极简扁平模型图标 + 一个简短英文标签**（DDPM、DDIM、Score-SDE、NCSN、DPM-Solver++、Consistency、VAE、VQ-VAE、LDM/SD、DALL·E2、Imagen、CFG、DiT、ControlNet、SD3、VAR、Janus-Pro）。用**细线实箭头**沿泳道从左到右串联表示"在其基础上构建(builds-on)"；用**竖向虚线**连接同期并行的工作（如 DiT ∥ ControlNet）；用**点线**表示 inspired-by（如 VAR ┄→ Janus-Pro）；用一条**橙色粗箭头**从扩散主干指向左下角的 GAN(BigGAN) 图标并标注"⇒ 超越/supersedes"；在 VAR 处用一条细线连回 VQ-VAE 与 DiT（表示它承接离散 tokenizer 与 Transformer 骨干、却反超扩散）。
 
 在左端把 **Sohl-Dickstein(扩散框架)** 与 **Vincent(score)** 画成两个**起点锚标**；在 LDM 节点处用一个小小的"汇合"符号表示它**同时承接 DDPM 与 VQ-VAE 两条线**。
 
@@ -44,15 +45,16 @@
 ## 三、结构清单（贴在提示词后，作为连线硬约束）
 
 ```
-画布：横向 16:9，白底；顶部年代轴 2011 · 2015 · 2019 · 2020 · 2021 · 2022 · 2023 · 2024
-四条水平泳道（上→下）：①分数/SDE  ②扩散主干+采样  ③潜空间文生图  ④引导·架构·可控
+画布：横向 16:9，白底；顶部年代轴 2011 · 2015 · 2019 · 2020 · 2021 · 2022 · 2023 · 2024 · 2025
+五条水平泳道（上→下）：①分数/SDE  ②扩散主干+采样  ③潜空间文生图  ④引导·架构·可控  ⑤自回归+统一多模态
 
 节点（泳道 / 年代 / 标签 / 角色）：
  ① 2011 Vincent(奠基)   2019 NCSN   2020 Score-SDE(理论总纲)
  ② 2015 Sohl-Dickstein(奠基)  2020 DDPM(枢纽,高亮)  2020 DDIM  2022 DPM-Solver++  2023 Consistency
  ③ 2013 VAE  2017 VQ-VAE  2022 LDM/Stable Diffusion(枢纽)  2022 DALL·E2  2022 Imagen
  ④ 2018 BigGAN(对照,左下)  2021 Dhariwal(classifier guidance)  2022 CFG
-    2023 DiT  2023 ControlNet  2024 SD3(前沿,最右)
+    2023 DiT  2023 ControlNet  2024 SD3
+ ⑤ 2024 VAR(前沿)  2025 Janus-Pro(最新, 标 ⚠ 引用待索引, 最右)
 
 实箭头 = builds-on（细线，沿时间从左指向右）：
  Vincent→DDPM ; Vincent→NCSN ; NCSN→Score-SDE ; Sohl-Dickstein→DDPM ; Sohl-Dickstein→Score-SDE
@@ -61,12 +63,14 @@
  Dhariwal→CFG ; CFG→Imagen
  VAE→VQ-VAE ; VQ-VAE→LDM ; Dhariwal→LDM
  LDM→DiT ; LDM→ControlNet ; LDM→SD3 ; DiT→SD3
+ VQ-VAE→VAR ; DiT→VAR   （VAR 承接离散 tokenizer 与 Transformer 骨干，却反超扩散）
 
-虚线 = parallel（竖向，无方向）： DiT ∥ ControlNet ；（可选）LDM ∥ DALL·E2 ∥ Imagen
-点线 = inspired-by： Dhariwal ┄→ DALL·E2
+虚线 = parallel（竖向，无方向）： DiT ∥ ControlNet
+点线 = inspired-by： Dhariwal ┄→ DALL·E2 ; VAR ┄→ Janus-Pro
 橙色粗箭头 = supersedes： Dhariwal/扩散主干 ⇒ BigGAN（标注"超越 GAN"）
 
 橙色诚实性徽标（右下角）："真实论文 · 引用经 OpenAlex/S2 核验 ✓ · Zero-hallucination"
+Janus-Pro 旁标小号橙色"⚠ 2025 最新·引用待索引"——体现"越靠前沿、数据越新、越如实标注"
 ```
 
 ---
@@ -74,5 +78,5 @@
 ## 四、备选：更贴近"三段式"参考版（如果你想要更简洁）
 
 若想最贴近你给的三段参考图，可把四泳道压成**三段横向**：
-**① 奠基理论**（score matching · VAE · 热力学扩散）→ **② 核心突破与路线分化**（DDPM → Score-SDE / DDIM；LDM·DALL·E2·Imagen；classifier→CFG）→ **③ 近两年前沿**（DiT · ControlNet · Consistency · SD3）。
+**① 奠基理论**（score matching · VAE · 热力学扩散）→ **② 核心突破与路线分化**（DDPM → Score-SDE / DDIM；LDM·DALL·E2·Imagen；classifier→CFG）→ **③ 近年前沿**（DiT · ControlNet · Consistency · SD3 · **VAR · Janus-Pro**，最右 Janus-Pro 标"2025 最新·⚠引用待索引"）。
 段间用细线箭头串联，橙色徽标与配色不变。提示词主体同上，只把"4 泳道"改成"3 段"、节点按段归并即可。
