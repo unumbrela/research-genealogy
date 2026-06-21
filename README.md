@@ -85,6 +85,12 @@ inline — so you can trust the arrows, not just the boxes.
 
 Stdlib-only scripts, no pip install, no API key required.
 
+## How it works
+
+![Pipeline: research direction → real citation-graph mining (OpenAlex) → lineage construction → non-linear genealogy report](assets/pipeline.png)
+
+Four stages, left to right: **① 输入与检索词派生** (a research direction → 1 primary + 2–3 alias English phrasings) → **② 真实引用图谱挖掘 (OpenAlex)** (multi-pass `broad / precise / frontier` search + citation `snowball` over references & citing works) → **③ 谱系构建管线** (`relevance gate` → `in-field scoring` → edge derivation with transitive reduction & parallel detection → a draft `lineage.json`) → **④ 非线性发展族谱报告** (Claude refines summaries/relations from real abstracts, then renders the ASCII genealogy tree + an era-by-era report). The orange **零幻觉 / Zero-hallucination** thread is the invariant: every node is real OpenAlex metadata and every `builds-on` edge is a `✓ verified` real citation.
+
 ## Install
 
 ```bash
@@ -141,6 +147,37 @@ The same standard applies to the image-detection example:
 [`examples/generated-image-detection.md`](examples/generated-image-detection.md)
 (2018 GAN 取证 → 频域/泛化双路线 → 扩散冲击三路并行 → CLIP/可解释前沿,
 16/16 edges verified).
+
+### Worked example: "扩散模型 / Diffusion Models" — and what *honest* verification looks like
+
+From the direction *扩散模型图像生成*, the skill derived 4 English phrasings (DDPM /
+score-based SDE / latent text-to-image / diffusion transformer), pulled a pool of
+156 candidates (90-paper relevance core), and after refinement produced a 14-node
+genealogy spanning **2011 → 2025**, written up in full →
+[`examples/diffusion-models-genealogy.md`](examples/diffusion-models-genealogy.md):
+
+```
+ 2015 │  ● Sohl-Dickstein    扩散框架奠基（非平衡热力学）
+ 2020 │     ├── ◉ Ho (DDPM) ✓        引爆点：扩散追平 GAN
+ 2021 │     │   ├── ○ Dhariwal ✓       ⇒ supersedes BigGAN，FID 超越
+ 2022 │     │   │   ├── ◉ Rombach ✓      LDM / Stable Diffusion（潜空间 + 文本）
+ 2023 │     │   │   │   ├── ★ Peebles (DiT) ✓    Transformer 骨干 + scaling 律
+ 2023 │     │   │   │   ├── ★ Zhang (ControlNet) ✓  精确空间可控
+ 2025 │     │   │   │   └── ★ Lu (DPM-Solver++) ✓   ~15 步快速采样
+ 2022 │     │   │   └┈┈ ◉ Ramesh (DALL·E 2) ⚠   ∥ parallel: Rombach
+ 2020 │     └── ○ Song (Score-SDE) ✓    理论总纲：统一 score + 扩散
+```
+
+This run is also the best illustration of the project's honesty rule. `verify.py`
+returned **13 ✓ verified · 1 ∥ parallel · 2 ⚠** — and the two ⚠ are *not* dubious
+claims, they are genuine **OpenAlex data gaps**: VQ-VAE (van den Oord 2017) and
+DALL·E 2 (Ramesh 2022) both have an **empty `referenced_works` list upstream**, so
+their edges *cannot* be machine-confirmed. The tool leaves the ⚠ honestly rather
+than laundering it. (Refinement *did* fix 3 *false* ⚠ caused by OpenAlex duplicate
+records — BigGAN and Sohl-Dickstein were cited under a different work-id than the
+node's; aligning the id flipped them to ✓.) A separate data wart: OpenAlex's DDPM
+abstract is polluted by an unrelated repo's README, so that one summary was
+grounded from papers that cite DDPM — never from memory.
 
 ### One command (fast path)
 

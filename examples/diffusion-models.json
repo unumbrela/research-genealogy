@@ -1,0 +1,273 @@
+{
+  "field": "扩散模型图像生成 (Diffusion Models for Image Generation)",
+  "_source": "Draft by scripts/genealogy.py (multi-pass search + citation snowball + in-field ranking + transitive reduction), refined per SKILL.md: dropped 2 off-topic orphans (MatterGen 材料、metamaterials) and redundant PixelCNN; wired in founding paper sohldickstein2015 and kingma2013(VAE); added song2020sde(Score-SDE)、peebles2023(DiT)、controlnet2023 from swap pools / targeted title search; summaries rewritten from real abstracts. NOTE: OpenAlex 对 DDPM (W3036167779) 的摘要字段被一个无关仓库(DiffuCpG)的 README 污染，故 jonathan2020 的 problem/contribution 依据 SR3/Improved-DDPM 等引用它的论文摘要的描述写成，未凭空杜撰。All metadata from OpenAlex, 2026-06.",
+  "nodes": [
+    {
+      "id": "vincent2011",
+      "oa": "W2013035813",
+      "title": "A Connection Between Score Matching and Denoising Autoencoders",
+      "authors": "Pascal Vincent",
+      "year": 2011,
+      "venue": "Neural Computation",
+      "citations": 979,
+      "problem": "直接对能量模型做 score matching 需计算二阶导数、代价高，去噪自编码器又缺乏明确的概率解释",
+      "contribution": "证明去噪自编码器的训练准则等价于匹配数据的 score（对数密度梯度），把「学习去噪」与 score 估计联系起来，为日后分数/扩散模型埋下理论种子",
+      "url": "https://doi.org/10.1162/neco_a_00142"
+    },
+    {
+      "id": "sohldickstein2015",
+      "oa": "W2962736171",
+      "title": "Deep Unsupervised Learning using Nonequilibrium Thermodynamics",
+      "authors": "Jascha Sohl-Dickstein et al.",
+      "year": 2015,
+      "venue": "ICML",
+      "citations": 1417,
+      "_oa_note": "DDPM 与 Score-SDE 均以 W2962736171 引用本文（OpenAlex 重复记录），故对齐为该 id 以便核验",
+      "problem": "想要一类既足够灵活、又能精确学习/采样/推断的生成模型，二者长期难以兼得",
+      "contribution": "借非平衡热力学，提出「前向逐步加噪破坏结构、再学习反向去噪逐步恢复」的扩散框架，首次给出灵活且可精确处理的扩散式生成模型——扩散模型的奠基工作",
+      "url": "http://arxiv.org/abs/1503.03585"
+    },
+    {
+      "id": "kingma2013",
+      "oa": "W1959608418",
+      "title": "Auto-Encoding Variational Bayes",
+      "authors": "Diederik P. Kingma, Max Welling",
+      "year": 2013,
+      "venue": "ICLR",
+      "citations": 15628,
+      "problem": "含连续隐变量、后验难解的有向概率模型，如何在大规模数据上高效推断与学习",
+      "contribution": "提出重参数化技巧与变分下界估计（VAE），让带隐变量的生成模型可用标准 SGD 优化，为后续「隐空间生成」(VQ-VAE → 潜扩散) 奠定基础",
+      "url": "http://arxiv.org/abs/1312.6114"
+    },
+    {
+      "id": "brock2018",
+      "oa": "W2893749619",
+      "title": "Large Scale GAN Training for High Fidelity Natural Image Synthesis",
+      "authors": "Andrew Brock et al.",
+      "year": 2018,
+      "venue": "ICLR",
+      "citations": 1786,
+      "problem": "从 ImageNet 等复杂数据集生成高分辨率、多样的图像仍是难题",
+      "contribution": "把 GAN 训练推到当时最大规模（BigGAN），用正交正则化 + 截断技巧在类条件 ImageNet 合成上大幅刷新 IS/FID，确立了扩散模型后来要超越的 GAN 标杆",
+      "url": "http://arxiv.org/abs/1809.11096"
+    },
+    {
+      "id": "oord2017",
+      "oa": "W2752796333",
+      "title": "Neural Discrete Representation Learning (VQ-VAE)",
+      "authors": "Aäron van den Oord et al.",
+      "year": 2017,
+      "venue": "NeurIPS",
+      "citations": 1969,
+      "problem": "VAE 的连续隐变量在搭配强解码器时常被忽略（后验坍塌），难学到有用的离散表示",
+      "contribution": "提出向量量化的 VQ-VAE：编码器输出离散 latent 并学习其先验，避免后验坍塌，为「先把图像压缩到紧凑 latent、再在其上建模」的潜扩散范式提供编码器",
+      "url": "http://arxiv.org/abs/1711.00937"
+    },
+    {
+      "id": "jonathan2020",
+      "oa": "W3036167779",
+      "title": "Denoising Diffusion Probabilistic Models (DDPM)",
+      "authors": "Jonathan Ho et al.",
+      "year": 2020,
+      "venue": "NeurIPS",
+      "citations": 5637,
+      "problem": "Sohl-Dickstein 的扩散模型样本质量远不及 GAN，且缺乏好用、稳定的训练目标",
+      "contribution": "提出 DDPM，揭示扩散与去噪 score matching / Langevin 采样的等价联系，用简化的加权去噪目标训练，首次让扩散模型在图像生成上达到与 GAN 相当的高质量，引爆整条技术路线",
+      "url": "http://arxiv.org/abs/2006.11239"
+    },
+    {
+      "id": "song2020sde",
+      "oa": "W3110257065",
+      "title": "Score-Based Generative Modeling through Stochastic Differential Equations",
+      "authors": "Yang Song et al.",
+      "year": 2020,
+      "venue": "ICLR",
+      "citations": 1274,
+      "problem": "分数匹配(NCSN)与离散步的 DDPM 各自为政，缺乏统一、连续时间的理论框架",
+      "contribution": "用随机微分方程(SDE)把扩散写成连续时间过程，统一了 score-based 模型与 DDPM，给出 reverse-time SDE / 概率流 ODE 采样、精确似然与可控生成——扩散模型的理论总纲",
+      "url": "http://arxiv.org/abs/2011.13456"
+    },
+    {
+      "id": "dhariwal2021",
+      "oa": "W3162926177",
+      "title": "Diffusion Models Beat GANs on Image Synthesis",
+      "authors": "Prafulla Dhariwal, Alex Nichol",
+      "year": 2021,
+      "venue": "NeurIPS",
+      "citations": 2173,
+      "problem": "扩散模型样本质量是否真能全面超过当时最强的 GAN，仍未被证实",
+      "contribution": "通过架构消融 + classifier guidance（用分类器梯度在保真与多样性间权衡），首次让扩散在 ImageNet 上 FID 全面超越 BigGAN，把扩散坐实为新 SOTA",
+      "url": "http://arxiv.org/abs/2105.05233"
+    },
+    {
+      "id": "rombach2022",
+      "oa": "W4312933868",
+      "title": "High-Resolution Image Synthesis with Latent Diffusion Models (Stable Diffusion)",
+      "authors": "Robin Rombach et al.",
+      "year": 2022,
+      "venue": "CVPR",
+      "citations": 13635,
+      "problem": "像素空间扩散训练/采样代价极高（数百 GPU 天），难以做高分辨率与大规模条件生成",
+      "contribution": "把扩散搬到预训练自编码器的潜空间(LDM)，并用 cross-attention 注入文本等条件，在大幅降本的同时实现高分辨率文本生图——即开源的 Stable Diffusion",
+      "url": "https://doi.org/10.1109/cvpr52688.2022.01042"
+    },
+    {
+      "id": "ramesh2022",
+      "oa": "W4224035735",
+      "title": "Hierarchical Text-Conditional Image Generation with CLIP Latents (DALL·E 2)",
+      "authors": "Aditya Ramesh et al.",
+      "year": 2022,
+      "venue": "arXiv",
+      "citations": 2286,
+      "problem": "如何利用 CLIP 的图文联合表示来做高质量、可控的文本生图",
+      "contribution": "提出 unCLIP 两阶段模型（DALL·E 2）：先由文本生成 CLIP 图像 embedding，再用扩散解码器生成图像，提升多样性并支持零样本图像编辑",
+      "url": "http://arxiv.org/abs/2204.06125"
+    },
+    {
+      "id": "saharia2022",
+      "oa": "W3155072588",
+      "title": "Image Super-Resolution via Iterative Refinement (SR3)",
+      "authors": "Chitwan Saharia et al.",
+      "year": 2022,
+      "venue": "TPAMI",
+      "citations": 1637,
+      "problem": "把扩散从无条件生成扩展到条件式「图像到图像」任务（如超分辨率）尚缺有效范式",
+      "contribution": "提出 SR3，将 DDPM 用于以低分图为条件的迭代去噪超分，人眼欺骗率接近 50%，并可级联用于高分辨率生成，开启扩散做 image-to-image 的路线",
+      "url": "https://doi.org/10.1109/tpami.2022.3204461"
+    },
+    {
+      "id": "peebles2023",
+      "oa": "W4390872297",
+      "title": "Scalable Diffusion Models with Transformers (DiT)",
+      "authors": "William Peebles, Saining Xie",
+      "year": 2023,
+      "venue": "ICCV",
+      "citations": 1418,
+      "problem": "扩散模型长期依赖 U-Net 骨干，其可扩展性(scaling)规律不清楚",
+      "contribution": "用 Transformer 替换 U-Net、在 latent patch 上做扩散(DiT)，证明「算力越大 FID 越低」的清晰 scaling 规律，刷新类条件 ImageNet，并成为后续大模型(如 SD3/Sora)的骨干",
+      "url": "https://doi.org/10.1109/iccv51070.2023.00387"
+    },
+    {
+      "id": "controlnet2023",
+      "oa": "W4390873054",
+      "title": "Adding Conditional Control to Text-to-Image Diffusion Models (ControlNet)",
+      "authors": "Lvmin Zhang et al.",
+      "year": 2023,
+      "venue": "ICCV",
+      "citations": 3589,
+      "problem": "纯文本 prompt 无法精确控制生成图像的空间结构（边缘、姿态、深度等）",
+      "contribution": "提出 ControlNet：冻结预训练 Stable Diffusion，旁路一个可训练副本注入边缘/姿态/深度等空间条件，实现精确可控生成，催生大量可控生图应用",
+      "url": "http://arxiv.org/abs/2302.05543"
+    },
+    {
+      "id": "lu2025",
+      "oa": "W4411528087",
+      "title": "DPM-Solver++: Fast Solver for Guided Sampling of Diffusion Probabilistic Models",
+      "authors": "Cheng Lu et al.",
+      "year": 2025,
+      "venue": "Machine Intelligence Research",
+      "citations": 99,
+      "problem": "扩散采样需上百步(DDIM 约 100–250 步)，在大引导尺度下已有高阶 solver 还会失稳、甚至更慢",
+      "contribution": "提出 DPM-Solver++：面向带引导采样的高阶扩散 ODE 求解器 + 多步稳定化，把高质量采样压到约 15–20 步，显著加速文本生图的实际部署",
+      "url": "https://doi.org/10.1007/s11633-025-1562-4"
+    }
+  ],
+  "edges": [
+    {
+      "from": "vincent2011",
+      "to": "jonathan2020",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "sohldickstein2015",
+      "to": "jonathan2020",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "sohldickstein2015",
+      "to": "song2020sde",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "jonathan2020",
+      "to": "dhariwal2021",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "brock2018",
+      "to": "dhariwal2021",
+      "relation": "supersedes",
+      "verified": "verified"
+    },
+    {
+      "from": "kingma2013",
+      "to": "oord2017",
+      "relation": "builds-on",
+      "verified": "unverified"
+    },
+    {
+      "from": "oord2017",
+      "to": "rombach2022",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "jonathan2020",
+      "to": "rombach2022",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "dhariwal2021",
+      "to": "rombach2022",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "jonathan2020",
+      "to": "saharia2022",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "dhariwal2021",
+      "to": "ramesh2022",
+      "relation": "inspired-by",
+      "verified": "unverified"
+    },
+    {
+      "from": "rombach2022",
+      "to": "peebles2023",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "rombach2022",
+      "to": "controlnet2023",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "rombach2022",
+      "to": "lu2025",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "song2020sde",
+      "to": "lu2025",
+      "relation": "builds-on",
+      "verified": "verified"
+    },
+    {
+      "from": "ramesh2022",
+      "to": "rombach2022",
+      "relation": "parallel",
+      "verified": "parallel"
+    }
+  ]
+}
