@@ -318,31 +318,51 @@ def _fix_dup_years(pool, by_id):
 
 def _topic_gate(pool, core, qsets, vocab):
     """Final relevance gate before scoring: keep a paper only if it belongs to
-    the core, or matches the topic loosely AND has a real citation tie to the
-    core. Text-only matches with no tie (an off-topic paper that happens to
-    use the query words) fall out here."""
+    the core, or matches the topic loosely AND is genuinely embedded in the
+    field's citation network. A loose keyword match plus a single citation tie
+    is NOT enough — that lets *application* papers from another domain leak in
+    (e.g. a diffusion-for-materials or metamaterials paper that cites DDPM but
+    isn't part of image-generation). Such papers have **few core ties AND low
+    overlap with the field's own vocabulary**, so we require either two core
+    ties with some vocab overlap, or one tie with strong vocab overlap. Papers
+    the API confirmed as all-terms ('precise') matches are trusted directly."""
     if len(core) < 3:
         return pool                       # core too thin to anchor the gate
     core_ids = {p["id"] for p in core}
-    core_refs = set()
+    core_cite = Counter()                 # how many core papers cite p
     for p in core:
-        core_refs.update(p.get("referenced_works") or [])
+        for r in p.get("referenced_works") or []:
+            core_cite[r] += 1
 
-    def tied(p):
-        return (p["id"] in core_refs
-                or set(p.get("referenced_works") or []) & core_ids)
+    def tie_count(p):
+        return (core_cite.get(p["id"], 0)
+                + len(set(p.get("referenced_works") or []) & core_ids))
 
     # generic giants (backbones, base datasets) loosely match the topic words
     # and ARE cited by the core — but their citation count dwarfs the field's
     cmax = max((p.get("citations") or 0) for p in core)
-    kept = [p for p in pool
-            if p["id"] in core_ids
-            or (on_topic(p, qsets, vocab) and tied(p)
-                and (p.get("citations") or 0) <= 30 * max(cmax, 100))]
+    cap = 30 * max(cmax, 100)
+    kept, drift = [], 0
+    for p in pool:
+        if p["id"] in core_ids:
+            kept.append(p)
+            continue
+        if (p.get("citations") or 0) > cap:
+            continue                       # mega-cited generic dependency
+        if p.get("_precise") and on_topic(p, qsets, vocab):
+            kept.append(p)                 # API-confirmed every-term match
+            continue
+        if not on_topic(p, qsets, vocab):
+            continue
+        tc, vo = tie_count(p), len(_node_terms(p) & vocab)
+        if (tc >= 2 and vo >= 3) or (tc >= 1 and vo >= 6):
+            kept.append(p)
+        else:
+            drift += 1                     # off-topic / domain-drift application
     dropped = len(pool) - len(kept)
     if dropped:
-        print(f"      topic gate: dropped {dropped} off-topic candidates",
-              file=sys.stderr)
+        print(f"      topic gate: dropped {dropped} off-topic candidates "
+              f"({drift} as domain drift)", file=sys.stderr)
     return kept
 
 
@@ -590,6 +610,82 @@ def build(direction, chosen, pool=()):
             "_alternates": [_cand_view(p) for p in alternates]}
 
 
+def link_orphans(data, chosen, prune=False):
+    """Auto-repair orphans: add a real builds-on edge when an orphan is cited by
+    (or cites) a selected node. Crucially this matches by **normalized title**,
+    not just OpenAlex id, so the common case where the citation is hidden behind
+    a duplicate work-id (the same gap verify.py reconciles) gets linked
+    automatically instead of landing on the human refiner. Orphans that remain
+    unlinkable after this are dropped only when prune=True.
+
+    Returns the number of edges added and nodes pruned."""
+    orphans = list(data["_stats"]["orphans"])
+    if not orphans:
+        return 0, 0
+    by_oa = {p["id"]: p for p in chosen}
+    oa_of = {n["id"]: n["oa"] for n in data["nodes"]}
+    title_of = {n["id"]: _norm_title(n.get("title")) for n in data["nodes"]}
+    year_of = {n["id"]: (n.get("year") or 0) for n in data["nodes"]}
+
+    # one batched fetch: normalized titles of every selected node's references
+    ref_ids = sorted({r for p in chosen
+                      for r in (p.get("referenced_works") or [])})
+    id2title = {}
+    for r in papers.oa_batch(ref_ids):
+        if r.get("id") and r.get("title"):
+            id2title[r["id"]] = _norm_title(r["title"])
+
+    def ref_titles(slug):
+        p = by_oa.get(oa_of.get(slug))
+        return {id2title[r] for r in (p.get("referenced_works") or [])
+                if r in id2title} if p else set()
+
+    existing = {(e["from"], e["to"]) for e in data["edges"]}
+    added = 0
+    for o in orphans:
+        cands = []                          # (parent_slug, child_slug)
+        for c in title_of:
+            if c == o:
+                continue
+            # c cites o  -> o is the (older) parent
+            if title_of[o] and title_of[o] in ref_titles(c):
+                cands.append((o, c))
+            # o cites c  -> c is the parent
+            if title_of[c] and title_of[c] in ref_titles(o):
+                cands.append((c, o))
+        # prefer links where the orphan is the CHILD (hang it off a real
+        # ancestor); nearest predecessor first; cap at 2 new edges per orphan
+        cands.sort(key=lambda fc: (fc[1] != o, -year_of[fc[0]]))
+        for frm, to in cands[:2]:
+            if (frm, to) in existing or (to, frm) in existing:
+                continue
+            data["edges"].append({"from": frm, "to": to,
+                                  "relation": "builds-on", "verified": "verified"})
+            existing.add((frm, to))
+            added += 1
+
+    # recompute health stats
+    linked = {e["from"] for e in data["edges"]} | {e["to"] for e in data["edges"]}
+    has_parent = {e["to"] for e in data["edges"] if e["relation"] != "parallel"}
+    still = [n["id"] for n in data["nodes"] if n["id"] not in linked]
+    pruned = 0
+    if prune and still:
+        keep = set(still) ^ {n["id"] for n in data["nodes"]}  # all but orphans
+        data["nodes"] = [n for n in data["nodes"] if n["id"] in keep]
+        data["edges"] = [e for e in data["edges"]
+                         if e["from"] in keep and e["to"] in keep]
+        pruned = len(still)
+        linked = {e["from"] for e in data["edges"]} \
+            | {e["to"] for e in data["edges"]}
+        has_parent = {e["to"] for e in data["edges"]
+                      if e["relation"] != "parallel"}
+        still = [n["id"] for n in data["nodes"] if n["id"] not in linked]
+    data["_stats"]["orphans"] = still
+    data["_stats"]["roots"] = [n["id"] for n in data["nodes"]
+                               if n["id"] not in has_parent and n["id"] in linked]
+    return added, pruned
+
+
 # --------------------------------------------------------------------- main --
 def main():
     ap = argparse.ArgumentParser(
@@ -607,6 +703,9 @@ def main():
     ap.add_argument("--to-year", type=int, dest="to_year")
     ap.add_argument("--no-expand", action="store_true",
                     help="skip the citation snowball (faster, weaker pool)")
+    ap.add_argument("--prune-orphans", action="store_true",
+                    help="drop orphan nodes that stay unlinked after the "
+                         "automatic title-aware repair (default: keep & flag)")
     ap.add_argument("--render", action="store_true")
     args = ap.parse_args()
 
@@ -630,6 +729,12 @@ def main():
     print("[4/4] deriving citation edges (transitive reduction) …",
           file=sys.stderr)
     data = build(args.direction, chosen, pool)
+    if data["_stats"]["orphans"]:
+        added, pruned = link_orphans(data, chosen, prune=args.prune_orphans)
+        if added or pruned:
+            print(f"      orphan repair: linked {added} edge(s)"
+                  + (f", pruned {pruned} node(s)" if pruned else ""),
+                  file=sys.stderr)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")

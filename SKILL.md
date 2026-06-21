@@ -234,12 +234,37 @@ python3 scripts/papers.py expand <paperId> --limit 40                # lineage
 search returns off-topic giants. `--from-year/--to-year` window, `--sort
 relevance|citations|recent`.
 
+## Robustness (so you fight the tool less)
+
+- **Duplicate-record-aware verification.** OpenAlex often stores a paper under
+  several work-ids, so "B cites A" can fail on an exact-id check even when the
+  citation is real. `verify.py` now reconciles by normalized **title / DOI**
+  before marking `⚠`, and **falls back to Semantic Scholar** when OpenAlex's
+  reference list is empty — so genuine citations stop showing up as false `⚠`.
+  A surviving `⚠` now much more likely means a real gap worth a look.
+- **Polluted/empty abstracts** (e.g. an OpenAlex record whose abstract is some
+  unrelated repo's README) are detected and **repaired from Semantic Scholar**,
+  so your grounded summaries don't inherit garbage.
+- **Orphan auto-repair.** `genealogy.py` now links orphan nodes to their real
+  parents/children automatically (including the duplicate-record case) before
+  writing the draft; `--prune-orphans` drops any that truly can't be linked.
+  You should see far fewer orphans to fix by hand.
+- **Tighter topic gate.** Application/review papers from an adjacent domain
+  (e.g. diffusion-for-materials when the field is image generation) that merely
+  cite the core are now filtered as domain drift, so the pool stays on-topic.
+
 ## Notes
 
 - Scripts use only the Python stdlib. Default backend is **OpenAlex** (no key);
-  set `OPENALEX_MAILTO` for its faster polite pool. `--source s2` uses Semantic
-  Scholar (set `S2_API_KEY`), but only OpenAlex provides the reference lists
-  the genealogy is built from.
+  set `OPENALEX_MAILTO` for its faster polite pool. Semantic Scholar is used
+  automatically as a **fallback** for missing reference lists / abstracts; set
+  `S2_API_KEY` to avoid its throttled keyless pool.
+- **Disk cache**: API responses are cached under `~/.cache/research-genealogy`
+  (so draft → verify → re-run is fast and reproducible). `RG_NO_CACHE=1` to
+  disable, `RG_CACHE_TTL=<seconds>` to tune, `RG_CACHE_DIR` to relocate.
 - `genealogy.py --from-year/--to-year` scopes the whole genealogy (e.g. only
-  the last decade); `--no-expand` skips the snowball for a quick draft.
+  the last decade); `--no-expand` skips the snowball for a quick draft;
+  `--prune-orphans` drops unlinkable orphan nodes.
+- **Regression guard**: `python3 scripts/selftest.py` checks the examples'
+  invariants offline; `--online` also re-verifies them and runs a live draft.
 - Quality over coverage: a tight, correct trunk beats an exhaustive mess.

@@ -19,9 +19,12 @@ paperId formats:
   s2:       an S2 id, "arXiv:2106.01342", "DOI:..", "CorpusId:.."
 """
 import argparse
+import hashlib
 import http.client
 import json
 import os
+import pathlib
+import re
 import sys
 import time
 import urllib.error
@@ -29,29 +32,87 @@ import urllib.parse
 import urllib.request
 
 
-def _http_json(url, headers=None):
+# ------------------------------------------------------------- disk cache -----
+# OpenAlex/S2 records are effectively immutable for our purposes, and the
+# pipeline re-resolves the same works repeatedly (draft → verify → re-run). A
+# small on-disk cache (stdlib only) makes re-runs fast, reproducible, and gentle
+# on the APIs' rate limits. Disable with RG_NO_CACHE=1; tune RG_CACHE_TTL (secs).
+_CACHE_DIR = pathlib.Path(os.environ.get("RG_CACHE_DIR")
+                          or (pathlib.Path.home() / ".cache"
+                              / "research-genealogy"))
+_CACHE_TTL = int(os.environ.get("RG_CACHE_TTL", str(14 * 24 * 3600)))
+_CACHE_ON = os.environ.get("RG_NO_CACHE", "").lower() not in ("1", "true", "yes")
+
+
+def _cache_get(url):
+    if not _CACHE_ON:
+        return None
+    p = _CACHE_DIR / (hashlib.sha1(url.encode("utf-8")).hexdigest() + ".json")
+    try:
+        if p.is_file() and (time.time() - p.stat().st_mtime) < _CACHE_TTL:
+            with open(p, encoding="utf-8") as f:
+                return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return None
+
+
+def _cache_put(url, data):
+    if not _CACHE_ON or data is None:
+        return
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        tmp = _CACHE_DIR / (hashlib.sha1(url.encode("utf-8")).hexdigest()
+                            + ".json")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+    except OSError:
+        pass
+
+
+def _http_json(url, headers=None, soft=False):
+    """GET JSON with disk cache + exponential-backoff retry.
+
+    soft=True is for optional *fallback* calls (e.g. Semantic Scholar's heavily
+    throttled keyless pool): fewer retries and return None on failure instead of
+    aborting, so a throttled fallback degrades to an honest 'unverified' rather
+    than crashing the primary OpenAlex workflow."""
+    cached = _cache_get(url)
+    if cached is not None:
+        return cached
     headers = dict(headers or {})
     headers.setdefault("User-Agent", "research-genealogy-skill")
-    for attempt in range(6):
+    tries = 3 if soft else 6
+    for attempt in range(tries):
         try:
             with urllib.request.urlopen(
                 urllib.request.Request(url, headers=headers), timeout=30
             ) as resp:
-                return json.loads(resp.read().decode("utf-8"))
+                data = json.loads(resp.read().decode("utf-8"))
+                _cache_put(url, data)
+                return data
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
             if e.code in (429, 500, 502, 503):
+                if attempt == tries - 1:
+                    break
                 wait = 2 ** attempt
                 print(f"[http {e.code}, retry in {wait}s]", file=sys.stderr)
                 time.sleep(wait)
                 continue
+            if soft:
+                return None
             raise
         except (urllib.error.URLError, ConnectionError, TimeoutError,
                 http.client.HTTPException) as e:
+            if attempt == tries - 1:
+                break
             wait = 2 ** attempt
             print(f"[network error {e}, retry in {wait}s]", file=sys.stderr)
             time.sleep(wait)
+    if soft:
+        return None
     raise SystemExit("API failed after retries")
 
 
@@ -60,6 +121,33 @@ def _authors_label(names):
     if not names:
         return ""
     return names[0] if len(names) == 1 else f"{names[0]} et al."
+
+
+def _norm_title(t):
+    """Title reduced to [a-z0-9] for robust cross-record matching (mirrors
+    genealogy._norm_title)."""
+    return re.sub(r"[^a-z0-9]", "", (t or "").lower())
+
+
+def _title_close(a, b):
+    na, nb = _norm_title(a), _norm_title(b)
+    if not na or not nb:
+        return False
+    return na == nb or na in nb or nb in na
+
+
+_BAD_ABS = re.compile(
+    r"docker (?:pull|run)|git clone|pip install|conda install|"
+    r"requirements\.txt|https?://github\.com|```", re.I)
+
+
+def _abstract_looks_bad(title, abstract):
+    """Detect a polluted/garbage OpenAlex abstract — e.g. a repo README pasted
+    in place of the real one (see DDPM / W3036167779, whose abstract is an
+    unrelated 'DiffuCpG' install guide). True when empty or code-like."""
+    if not abstract or len(abstract) < 40:
+        return True
+    return bool(_BAD_ABS.search(abstract))
 
 
 # ---------------------------------------------------------------- OpenAlex ----
@@ -251,7 +339,7 @@ def _s2_slim(p, with_abstract=False):
 
 
 def s2_search(query, limit, from_year=None, to_year=None, sort="relevance",
-              with_abstract=False):
+              with_abstract=False, soft=False):
     fields = S2_FIELDS + (",abstract" if with_abstract else "")
     params = {"query": query, "limit": limit, "fields": fields}
     if from_year or to_year:
@@ -259,7 +347,8 @@ def s2_search(query, limit, from_year=None, to_year=None, sort="relevance",
             if (from_year and to_year) else (f"{from_year}-" if from_year
                                              else f"-{to_year}")
     data = _http_json(
-        f"{S2}/paper/search?" + urllib.parse.urlencode(params), _s2_headers())
+        f"{S2}/paper/search?" + urllib.parse.urlencode(params), _s2_headers(),
+        soft=soft)
     papers = [_s2_slim(p, with_abstract)
               for p in (data.get("data") if data else []) or []]
     if sort == "recent":
@@ -269,12 +358,12 @@ def s2_search(query, limit, from_year=None, to_year=None, sort="relevance",
     return papers
 
 
-def s2_expand(pid, limit, with_abstract=False):
+def s2_expand(pid, limit, with_abstract=False, soft=False):
     main = S2_FIELDS + (",abstract" if with_abstract else "")
     detail = _http_json(
         f"{S2}/paper/{urllib.parse.quote(pid, safe=':')}?" + urllib.parse.urlencode(
             {"fields": f"{main},references.{S2_FIELDS},citations.{S2_FIELDS}"}),
-        _s2_headers())
+        _s2_headers(), soft=soft)
     if not detail:
         return None
     refs = [_s2_slim(r) for r in (detail.get("references") or []) if r]
@@ -285,6 +374,61 @@ def s2_expand(pid, limit, with_abstract=False):
     cites.sort(key=lambda p: (p.get("citations") or 0), reverse=True)
     return {"paper": _s2_slim(detail, with_abstract),
             "references": refs[:limit], "citations": cites[:limit]}
+
+
+# ------------------------------------------- cross-source fallbacks (A2) -------
+def s2_paper_id(node):
+    """An S2-resolvable id for a lineage node / slim record (DOI > arXiv > url)."""
+    if node.get("doi"):
+        return "DOI:" + str(node["doi"]).replace("https://doi.org/", "")
+    if node.get("arxiv"):
+        return "arXiv:" + str(node["arxiv"])
+    m = re.search(r"arxiv\.org/abs/([\d.]+)", node.get("url", "") or "")
+    if m:
+        return "arXiv:" + m.group(1)
+    return None
+
+
+def s2_abstract(title, doi=None, arxiv=None):
+    """Fetch a clean abstract from Semantic Scholar when OpenAlex's is missing or
+    polluted. Resolved by DOI/arXiv if available, else by a title-matched search."""
+    pid = s2_paper_id({"doi": doi, "arxiv": arxiv})
+    if pid:
+        res = s2_expand(pid, 1, with_abstract=True, soft=True)
+        if res and res.get("paper") and res["paper"].get("abstract") \
+                and _title_close(res["paper"].get("title"), title):
+            return res["paper"]["abstract"]
+    if title:
+        hits = s2_search(title, 3, with_abstract=True, soft=True)
+        for h in hits or []:
+            if h and h.get("abstract") and _title_close(h.get("title"), title):
+                return h["abstract"]
+    return None
+
+
+def s2_reference_keys(node, limit=400):
+    """(norm_titles, ext_ids) of a paper's references via Semantic Scholar — used
+    to verify edges when OpenAlex's referenced_works list is empty (e.g. VQ-VAE,
+    DALL·E 2). ext_ids are lowercased DOIs / arXiv ids."""
+    pid = s2_paper_id(node)
+    if not pid:
+        hits = s2_search(node.get("title", ""), 1, soft=True)
+        if hits and hits[0] and _title_close(hits[0].get("title"),
+                                              node.get("title")):
+            pid = hits[0]["id"]
+    if not pid:
+        return set(), set()
+    res = s2_expand(pid, limit, soft=True)
+    if not res:
+        return set(), set()
+    titles, exts = set(), set()
+    for r in res.get("references", []):
+        if r.get("title"):
+            titles.add(_norm_title(r["title"]))
+        for k in ("doi", "arxiv"):
+            if r.get(k):
+                exts.add(str(r[k]).lower())
+    return titles, exts
 
 
 # ----------------------------------------------------------------- dispatch ---

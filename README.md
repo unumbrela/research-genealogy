@@ -76,6 +76,15 @@ And the lineage itself is **checkable**: `scripts/verify.py` confirms that every
 `⚠ unverified`, `↺ reversed`, or `‼ cross-cite`. The genealogy shows the marks
 inline — so you can trust the arrows, not just the boxes.
 
+Verification is **duplicate-record aware**: OpenAlex frequently stores a paper
+under several work-ids, so an exact-id check alone reports false `⚠`. `verify.py`
+reconciles by normalized **title / DOI** and **falls back to Semantic Scholar**
+when OpenAlex's reference list is empty — so a real citation stays `✓` and a
+surviving `⚠` is far more likely a genuine gap. Drafts also **auto-link orphan
+nodes** and **repair polluted abstracts** from Semantic Scholar, and API calls
+are disk-cached for fast, reproducible re-runs. (`python3 scripts/selftest.py`
+guards these invariants.)
+
 ```
  2019 │     └── ◉ Ning Yu et al. ✓   █████░░  426     ← edge verified as a real citation
  2026 │     └── ★ Koutlis et al. ⚠   ·······    0     ← citation not found; flagged honestly
@@ -168,16 +177,21 @@ genealogy spanning **2011 → 2025**, written up in full →
  2020 │     └── ○ Song (Score-SDE) ✓    理论总纲：统一 score + 扩散
 ```
 
-This run is also the best illustration of the project's honesty rule. `verify.py`
-returned **13 ✓ verified · 1 ∥ parallel · 2 ⚠** — and the two ⚠ are *not* dubious
-claims, they are genuine **OpenAlex data gaps**: VQ-VAE (van den Oord 2017) and
-DALL·E 2 (Ramesh 2022) both have an **empty `referenced_works` list upstream**, so
-their edges *cannot* be machine-confirmed. The tool leaves the ⚠ honestly rather
-than laundering it. (Refinement *did* fix 3 *false* ⚠ caused by OpenAlex duplicate
-records — BigGAN and Sohl-Dickstein were cited under a different work-id than the
-node's; aligning the id flipped them to ✓.) A separate data wart: OpenAlex's DDPM
-abstract is polluted by an unrelated repo's README, so that one summary was
-grounded from papers that cite DDPM — never from memory.
+This run is also the best illustration of the project's honesty rule — and of
+what the **verification upgrade** buys you. The *first* pass returned
+**13 ✓ · 1 ∥ · 2 ⚠**, where the two ⚠ were genuine **OpenAlex data gaps**:
+VQ-VAE (van den Oord 2017) and DALL·E 2 (Ramesh 2022) both have an **empty
+`referenced_works` list upstream**, plus 3 *false* ⚠ from duplicate records
+(BigGAN / Sohl-Dickstein cited under a different work-id than the node's), and
+OpenAlex's DDPM abstract is polluted by an unrelated repo's README.
+
+The current pipeline handles all of these automatically: duplicate-record
+reconciliation flips the false ⚠ to ✓ without hand-aligning ids, the Semantic
+Scholar fallback recovers VQ-VAE / DALL·E 2's references, and the polluted DDPM
+abstract is repaired from S2 — so `verify.py` now reports **15 ✓ / 1 ∥** with no
+hand-holding (S2's keyless pool is throttled, so the two S2-recovered edges may
+fall back to an honest ⚠ when it's unreachable). The tool still leaves a true
+gap as ⚠ rather than laundering it — it just no longer cries wolf.
 
 ### One command (fast path)
 

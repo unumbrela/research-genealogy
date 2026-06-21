@@ -64,9 +64,23 @@ SYMBOL = {"verified": "✓", "unverified": "⚠", "reversed": "↺",
           "parallel": "∥", "cross-cite": "‼", "unresolved": "?"}
 
 
+def _ext_ids(node):
+    """Lowercased DOI / arXiv identifiers for a node (for cross-record matching)."""
+    e = set()
+    if node.get("doi"):
+        e.add(str(node["doi"]).replace("https://doi.org/", "").lower())
+    if node.get("arxiv"):
+        e.add(str(node["arxiv"]).lower())
+    m = re.search(r"arxiv\.org/abs/([\d.]+)", node.get("url", "") or "")
+    if m:
+        e.add(m.group(1).lower())
+    return e
+
+
 def verify(data):
     nodes = {n["id"]: n for n in data.get("nodes", [])}
-    cache = {}
+    cache = {}      # nid -> (oa_id, set(referenced_work_ids))
+    refkeys = {}    # nid -> (norm_title_set, ext_id_set) of its REFERENCES (lazy)
 
     def info(nid):
         if nid not in cache:
@@ -74,25 +88,59 @@ def verify(data):
             cache[nid] = resolve(nodes[nid]) if nid in nodes else (None, set())
         return cache[nid]
 
+    def ref_content(nid):
+        """Title/DOI keys of nid's reference list, used to confirm a citation
+        when an exact OpenAlex-id match fails. Two failure modes are repaired
+        here: (A1) the citing paper references the target under a *duplicate*
+        OpenAlex work-id — we match by normalized title / DOI instead; and
+        (A2) OpenAlex has an *empty* reference list for the citing paper — we
+        fall back to Semantic Scholar's references."""
+        if nid not in refkeys:
+            _, refs = info(nid)
+            titles, exts = set(), set()
+            if refs:
+                for r in papers.oa_batch(list(refs)):
+                    if r.get("title"):
+                        titles.add(papers._norm_title(r["title"]))
+                    if r.get("doi"):
+                        exts.add(str(r["doi"]).lower())
+            else:  # A2: no reference list upstream → try Semantic Scholar
+                titles, exts = papers.s2_reference_keys(nodes[nid])
+            refkeys[nid] = (titles, exts)
+        return refkeys[nid]
+
+    def cites(citing, cited):
+        """Does `citing` reference `cited`? Exact-id fast path, then dup-record /
+        cross-source reconciliation."""
+        c_id, c_refs = info(citing)
+        a_id, _ = info(cited)
+        if a_id and a_id in c_refs:
+            return True
+        titles, exts = ref_content(citing)
+        at = papers._norm_title(nodes[cited].get("title"))
+        if at and at in titles:
+            return True
+        return bool(_ext_ids(nodes[cited]) & exts)
+
     results = []
     for e in data.get("edges", []):
         f, t, rel = e["from"], e["to"], e.get("relation", "builds-on")
         if f not in nodes or t not in nodes:
             results.append((e, "unresolved"))
             continue
-        f_id, f_refs = info(f)
-        t_id, t_refs = info(t)
+        f_id, _ = info(f)
+        t_id, _ = info(t)
         if not f_id or not t_id:
             status = "unresolved"
         elif rel in CITES_REL:
-            if f_id in t_refs:
+            if cites(t, f):          # the later paper t should cite f
                 status = "verified"
-            elif t_id in f_refs:
+            elif cites(f, t):
                 status = "reversed"
             else:
                 status = "unverified"
-        else:  # parallel
-            status = "cross-cite" if (f_id in t_refs or t_id in f_refs) \
+        else:  # parallel: neither should cite the other
+            status = "cross-cite" if (cites(t, f) or cites(f, t)) \
                 else "parallel"
         results.append((e, status))
     return nodes, results
