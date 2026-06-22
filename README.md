@@ -260,7 +260,20 @@ python3 scripts/render_tree.py lineage.json --format mermaid    # GitHub-rendera
 python3 scripts/render_tree.py lineage.json --format markdown   # report: tree + table + edges
 python3 scripts/render_tree.py lineage.json --format bibtex     # cite every node
 python3 scripts/render_tree.py lineage.json --format drawio     # editable draw.io / diagrams.net diagram
+python3 scripts/render_tree.py lineage.json --format figure-prompt  # prompt for an image model (+ hard structure checklist)
 ```
+
+`--format figure-prompt` writes a ready-to-feed prompt for an image model
+(GPT-image / Midjourney / DALL·E): a styled prose brief **plus a hard structure
+checklist** that lists every node and edge verbatim (with ✓/⚠ marks), so the
+figure can only show the real, citation-grounded connections — never invented
+ones. `--lang en` for an English brief. Example output:
+[`examples/diffusion-models-figure-prompt.md`](examples/diffusion-models-figure-prompt.md).
+
+To turn that prompt into an actual PNG, pipe it through an OpenAI-compatible image
+relay (e.g. `gpt-image-2`) with `scripts/gen_figure.py lineage.json --out figure.png`
+— it sends the prose + the hard checklist and saves the returned image. Relay
+setup and API-key handling: [`image-relay.md`](image-relay.md).
 
 ### Manual passes (full control)
 

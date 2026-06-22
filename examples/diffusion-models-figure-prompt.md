@@ -1,82 +1,106 @@
-# 扩散模型发展历程 · 配图提示词与投喂指南
+# 《扩散模型图像生成 (Diffusion Models for Image Generation)》发展谱系 · 配图提示词
 
-> 用于把 `diffusion-models-genealogy.md` 的优化内容画成一张**适合论文发表的科研流程图**。
-> 版式：横向时间线 + 4 条分支泳道。风格对齐参考示例（白底、蓝+浅紫、橙色诚实性徽标、扁平矢量、细线箭头）。
+> 用法：把下面 **「一、提示词正文」整体复制给图像模型**，并把 **「二、结构清单」一起贴上作为硬约束** —— 清单逐条列出了每个节点与每条连接，模型只能照此绘制，不得增删或臆造关系。重要：先按 **「三、给作者的话」** 把泳道改成真实路线名再投喂。
 
----
+## 一、提示词正文（整体投喂给图像模型）
 
-## 一、要给图像生成模型提供的三样东西
+> 请生成一张适合论文发表、学术海报或项目汇报使用的科研发展谱系图，主题为“扩散模型图像生成 (Diffusion Models for Image Generation)”，用于清晰展示该方向从奠基工作到最新前沿的**非线性发展脉络**：谁在谁的基础上推进、哪些路线并行、哪些被取代。
+>
+> **整体布局**：从左到右为时间轴（2015–2025），顶部标注年份刻度；纵向划分为 7 条平行**泳道**，每条泳道是一条技术路线，路线内的论文按年份从左到右串联。主要时间分区：奠基(2015–2015) · 发展(2019–2020) · 演进(2021–2022) · 前沿(2023–2025)。
+>
+> **泳道（技术路线，名称见下方清单，由作者命名）**：
+> - 路线①「扩散主干（DDPM 一脉）」：2015 Jascha Sohl‐Dickstein et al. ● → 2020 Ho, Jonathan et al. ◉ → 2020 Jiaming Song et al. ○
+> - 路线②「分数 / SDE 路线」：2019 Yang Song et al. ● → 2020 Yang Song et al. ○ → 2022 Tero Karras et al. ○
+> - 路线③「引导与提质」（从 Ho, Jonathan et al. 分出）：2021 Alex Nichol et al. ○ → 2021 Prafulla Dhariwal et al. ◉ → 2022 Jonathan Ho et al. ○ → 2022 Chitwan Saharia et al. ◉
+> - 路线④「unCLIP 文生图」（从 Prafulla Dhariwal et al. 分出）：2022 Aditya Ramesh et al. ◉
+> - 路线⑤「潜空间·架构演进」（从 Prafulla Dhariwal et al. 分出）：2022 Robin Rombach et al. ◉ → 2023 William Peebles et al. ★ → 2024 Patrick Esser et al. ★ → 2025 Black Forest Labs et al. ★
+> - 路线⑥「可控生成」（从 Robin Rombach et al. 分出）：2023 Lvmin Zhang et al. ★
+> - 路线⑦「自回归·统一多模态」（从 William Peebles et al. 分出）：2024 Yi Jiang et al. ★ → 2025 Xiaokang Chen et al. ★
+>
+> **节点表示**：每篇论文是一张简洁卡片，含作者+年份与简短标题；用角色标记区分重要性——● 奠基 / ◉ 枢纽（高影响）/ ★ 前沿（最新）。卡片的视觉强调随角色递增。
+>
+> **连接与数据流**：用箭头表达论文间关系，区分四种语义且全程一致——builds-on＝细实线箭头；inspired-by＝虚线箭头；parallel＝点线无箭头（同期并行）；supersedes＝橙色粗箭头（取代）。在 builds-on 边上标注 ✓（已用引用核验）或 ⚠（参考文献待索引）作为诚实标记。**只允许绘制「结构清单」中列出的连接，不得新增或臆造。**
+>
+> **颜色语义（含义固定、不可混用）**：强调色（橙）用于 ★ 前沿节点、核心创新、supersedes 关系与最终输出；主色（蓝）用于 builds-on 主干与 ◉ 枢纽节点；奠基色（绿）用于 ● 奠基节点；辅助灰用于 ○ 其他节点与 ⚠ 未验证标记。
+>
+> **风格**：现代、简洁、专业的矢量化科研插图；白色或极浅灰背景；扁平化或轻微立体图标，线条清晰，模块边界明确，留白充足，对齐整齐，层级分明。仅保留必要简短标签（作者、年份、方法缩写、路线名），统一字体与字号，避免大段说明文字。
+>
+> **禁止**：复杂背景、过度渐变、强烈阴影、卡通化元素、装饰性粒子、与内容无关的图标、水印、Logo、乱码、错误公式或无法辨认的文字。
 
-把下面三块**一起**喂给图像模型（Nano Banana / Seedream / GPT-Image / Midjourney 等），正确率最高：
+## 二、结构清单（硬约束 · 模型只能照此绘制）
 
-1. **提示词正文**（第二节，主体描述版式与风格）。
-2. **结构清单**（第三节）——把"泳道 × 年代 × 节点 + 箭头关系"列成表，**贴在提示词后面**。图像模型最容易把多节点的连线画乱，给定显式结构能显著提升节点位置与箭头方向的正确率。
-3. **风格/版式参考**：白底、蓝+浅紫主色、橙色强调，宽高比 **16:9 或 2:1（横图）**；如有，附上你那张"三段管线"参考图作为风格样例（"按这张图的配色与线条质感"）。
+- 画布：16:9 横版，白色背景，顶部年份轴 2015–2025；18 个节点，22 条连接，7 条泳道。
 
-> 实操建议：
-> - 图像模型常把**大量小字标签画糊**。两条路：① 提示词里强调"标签极少、字体清晰、英文模型名为主"；② **先让模型出"少字/无字的版式骨架"，再用 Figma / draw.io / PPT 补精确文字**——出版级图建议走这条。
-> - 想要**可编辑矢量底稿**：直接 `python3 scripts/render_tree.py examples/diffusion-models.json --format drawio > diffusion.drawio`，导入 draw.io 调版式与配色，比纯图像生成更可控。
-> - 想要**结构绝对正确**：把第三节结构清单当成"硬约束"，让图像模型只负责"美化排版"，不负责"决定连线"。
+### 泳道 → 节点
 
----
+| 泳道 | 分出自 | 节点（按年份） |
+| --- | --- | --- |
+| ① | — | 2015 Jascha Sohl‐Dickstein et al. ● → 2020 Ho, Jonathan et al. ◉ → 2020 Jiaming Song et al. ○ |
+| ② | — | 2019 Yang Song et al. ● → 2020 Yang Song et al. ○ → 2022 Tero Karras et al. ○ |
+| ③ | Ho, Jonathan et al. | 2021 Alex Nichol et al. ○ → 2021 Prafulla Dhariwal et al. ◉ → 2022 Jonathan Ho et al. ○ → 2022 Chitwan Saharia et al. ◉ |
+| ④ | Prafulla Dhariwal et al. | 2022 Aditya Ramesh et al. ◉ |
+| ⑤ | Prafulla Dhariwal et al. | 2022 Robin Rombach et al. ◉ → 2023 William Peebles et al. ★ → 2024 Patrick Esser et al. ★ → 2025 Black Forest Labs et al. ★ |
+| ⑥ | Robin Rombach et al. | 2023 Lvmin Zhang et al. ★ |
+| ⑦ | William Peebles et al. | 2024 Yi Jiang et al. ★ → 2025 Xiaokang Chen et al. ★ |
 
-## 二、提示词正文（直接复制）
+### 节点
 
-请生成一张**适合论文发表的科研流程图**，主题是"**扩散模型图像生成的发展历程（2011→2025）**"，强调**脉络清晰、引用可核验的科学严谨性**。
+| 年份 | 作者 | 角色 | 引用 | 简短标题 | 核验 |
+| ---: | --- | --- | ---: | --- | :---: |
+| 2015 | Jascha Sohl‐Dickstein et al. | ● 奠基 | 1417 | Deep Unsupervised Learning using … | — |
+| 2019 | Yang Song et al. | ● 奠基 | 986 | Generative Modeling by Estimating… | — |
+| 2020 | Ho, Jonathan et al. | ◉ 枢纽 | 5637 | Denoising Diffusion Probabilistic… | ✓ |
+| 2020 | Yang Song et al. | ○ 其他 | 1274 | Score-Based Generative Modeling t… | ✓ |
+| 2020 | Jiaming Song et al. | ○ 其他 | 102 | Denoising Diffusion Implicit Mode… | ✓ |
+| 2021 | Prafulla Dhariwal et al. | ◉ 枢纽 | 2173 | Diffusion Models Beat GANs on Ima… | ✓ |
+| 2021 | Alex Nichol et al. | ○ 其他 | 412 | Improved Denoising Diffusion Prob… | ⚠ |
+| 2022 | Jonathan Ho et al. | ○ 其他 | 742 | Classifier-Free Diffusion Guidance | ✓ |
+| 2022 | Tero Karras et al. | ○ 其他 | 308 | Elucidating the Design Space of D… | ⚠ |
+| 2022 | Aditya Ramesh et al. | ◉ 枢纽 | 2286 | Hierarchical Text-Conditional Ima… | ✓ |
+| 2022 | Robin Rombach et al. | ◉ 枢纽 | 13635 | High-Resolution Image Synthesis w… | ✓ |
+| 2022 | Chitwan Saharia et al. | ◉ 枢纽 | 2106 | Photorealistic Text-to-Image Diff… | ✓ |
+| 2023 | William Peebles et al. | ★ 前沿 | 1418 | Scalable Diffusion Models with Tr… | ✓ |
+| 2023 | Lvmin Zhang et al. | ★ 前沿 | 3589 | Adding Conditional Control to Tex… | ✓ |
+| 2024 | Patrick Esser et al. | ★ 前沿 | 86 | Scaling Rectified Flow Transforme… | ✓ |
+| 2024 | Yi Jiang et al. | ★ 前沿 | 38 | Visual Autoregressive Modeling | ⚠ |
+| 2025 | Black Forest Labs et al. | ★ 前沿 | 4 | FLUX.1 Kontext | ⚠ |
+| 2025 | Xiaokang Chen et al. | ★ 前沿 | 10 | Janus-Pro | ⚠ |
 
-采用**从左到右的横向时间线布局**，顶部是一条**年代轴**：2011 · 2015 · 2019–2020 · 2021–2022 · 2023 · 2024 · 2025。画面纵向分为 **5 条水平泳道**，每条泳道是一条技术路线，自上而下：
+### 连接（只画这些）
 
-- **泳道① 分数 / SDE 路线**：Vincent(score matching) → NCSN → Score-SDE；
-- **泳道② 扩散主干 + 采样加速**：Sohl-Dickstein(扩散奠基) → DDPM(引爆点，画成高亮枢纽) → DDIM → DPM-Solver++ → Consistency；
-- **泳道③ 潜空间文生图**：VAE → VQ-VAE → LDM/Stable Diffusion，其右侧并排 DALL·E 2 与 Imagen 三个文生图模型图标；
-- **泳道④ 引导·架构·可控·新范式**：classifier guidance(Dhariwal) → CFG → ；DiT 与 ControlNet 并列 → SD3(rectified flow)；
-- **泳道⑤ 自回归回潮 + 统一多模态（最新前沿）**：VAR(下一分辨率自回归, 2024) → Janus-Pro(统一多模态, 2025，画在最右端、标"最新"，并用**橙色虚线小徽标**标注"⚠ 引用待索引")。
+| 起点 | → | 终点 | 关系 | 箭头样式 | 核验 |
+| --- | :---: | --- | --- | --- | :---: |
+| Jascha Sohl‐Dickstein et al. 2015 | → | Ho, Jonathan et al. 2020 | builds-on | 细实线箭头 → | ✓ |
+| Yang Song et al. 2019 | → | Yang Song et al. 2020 | builds-on | 细实线箭头 → | ✓ |
+| Ho, Jonathan et al. 2020 | → | Jiaming Song et al. 2020 | builds-on | 细实线箭头 → | ✓ |
+| Ho, Jonathan et al. 2020 | → | Alex Nichol et al. 2021 | builds-on | 细实线箭头 → | ⚠ |
+| Ho, Jonathan et al. 2020 | → | Prafulla Dhariwal et al. 2021 | builds-on | 细实线箭头 → | ✓ |
+| Alex Nichol et al. 2021 | → | Prafulla Dhariwal et al. 2021 | builds-on | 细实线箭头 → | ✓ |
+| Yang Song et al. 2020 | → | Tero Karras et al. 2022 | builds-on | 细实线箭头 → | ⚠ |
+| Prafulla Dhariwal et al. 2021 | → | Jonathan Ho et al. 2022 | builds-on | 细实线箭头 → | ✓ |
+| Prafulla Dhariwal et al. 2021 | → | Robin Rombach et al. 2022 | builds-on | 细实线箭头 → | ✓ |
+| Jonathan Ho et al. 2022 | → | Chitwan Saharia et al. 2022 | builds-on | 细实线箭头 → | ✓ |
+| Prafulla Dhariwal et al. 2021 | → | Aditya Ramesh et al. 2022 | builds-on | 细实线箭头 → | ✓ |
+| Robin Rombach et al. 2022 | → | William Peebles et al. 2023 | builds-on | 细实线箭头 → | ✓ |
+| Robin Rombach et al. 2022 | → | Lvmin Zhang et al. 2023 | builds-on | 细实线箭头 → | ✓ |
+| Robin Rombach et al. 2022 | → | Patrick Esser et al. 2024 | builds-on | 细实线箭头 → | ✓ |
+| William Peebles et al. 2023 | → | Patrick Esser et al. 2024 | builds-on | 细实线箭头 → | ✓ |
+| William Peebles et al. 2023 | → | Yi Jiang et al. 2024 | builds-on | 细实线箭头 → | ⚠ |
+| Patrick Esser et al. 2024 | → | Black Forest Labs et al. 2025 | builds-on | 细实线箭头 → | ⚠ |
+| Yi Jiang et al. 2024 | → | Xiaokang Chen et al. 2025 | builds-on | 细实线箭头 → | ⚠ |
+| William Peebles et al. 2023 | → | Xiaokang Chen et al. 2025 | inspired-by | 虚线箭头 ⇢ | ⚠ |
+| Ho, Jonathan et al. 2020 | → | Yang Song et al. 2020 | parallel | 点线·无箭头 ∥ | ‼ |
+| Aditya Ramesh et al. 2022 | → | Chitwan Saharia et al. 2022 | parallel | 点线·无箭头 ∥ | ‼ |
+| Patrick Esser et al. 2024 | → | Yi Jiang et al. 2024 | parallel | 点线·无箭头 ∥ | — |
 
-每个节点是一个**极简扁平模型图标 + 一个简短英文标签**（DDPM、DDIM、Score-SDE、NCSN、DPM-Solver++、Consistency、VAE、VQ-VAE、LDM/SD、DALL·E2、Imagen、CFG、DiT、ControlNet、SD3、VAR、Janus-Pro）。用**细线实箭头**沿泳道从左到右串联表示"在其基础上构建(builds-on)"；用**竖向虚线**连接同期并行的工作（如 DiT ∥ ControlNet）；用**点线**表示 inspired-by（如 VAR ┄→ Janus-Pro）；用一条**橙色粗箭头**从扩散主干指向左下角的 GAN(BigGAN) 图标并标注"⇒ 超越/supersedes"；在 VAR 处用一条细线连回 VQ-VAE 与 DiT（表示它承接离散 tokenizer 与 Transformer 骨干、却反超扩散）。
+### 图例
 
-在左端把 **Sohl-Dickstein(扩散框架)** 与 **Vincent(score)** 画成两个**起点锚标**；在 LDM 节点处用一个小小的"汇合"符号表示它**同时承接 DDPM 与 VQ-VAE 两条线**。
+- 角色：● 奠基 / ◉ 枢纽 / ★ 前沿 / ○ 其他
+- 颜色：橙＝前沿·核心创新·supersedes·输出；蓝＝builds-on 主干·枢纽；绿＝奠基；灰＝其他·未验证
+- 核验：✓ 已用引用核验　⚠ 参考文献待索引　‼ 互引　∥ 并行　? 关系待确认
 
-**橙色用于"真实 / 已核验"诚实性徽标**：在右下角放一个橙色小徽标"真实论文 · 引用经 OpenAlex/S2 核验 ✓ · Zero-hallucination"，并在已核验的箭头旁点缀极小的橙色 ✓。
+## 三、给作者的话（投喂前先做）
 
-整体风格**专业、清晰、矢量化科研插图质感**，画面干净、四条泳道层级分明、左右按年代对齐整齐。**白色背景，蓝色与浅紫色为主色，橙色仅用于"超越"箭头与"诚实性"徽标**。扁平简洁图标、细线箭头串联流程，避免过度装饰；**不要出现大段文字说明，仅保留极少量简短英文模型标签 + 极少中文路线名（分数路线 / 扩散主干 / 文生图 / 架构·可控）**。
-
----
-
-## 三、结构清单（贴在提示词后，作为连线硬约束）
-
-```
-画布：横向 16:9，白底；顶部年代轴 2011 · 2015 · 2019 · 2020 · 2021 · 2022 · 2023 · 2024 · 2025
-五条水平泳道（上→下）：①分数/SDE  ②扩散主干+采样  ③潜空间文生图  ④引导·架构·可控  ⑤自回归+统一多模态
-
-节点（泳道 / 年代 / 标签 / 角色）：
- ① 2011 Vincent(奠基)   2019 NCSN   2020 Score-SDE(理论总纲)
- ② 2015 Sohl-Dickstein(奠基)  2020 DDPM(枢纽,高亮)  2020 DDIM  2022 DPM-Solver++  2023 Consistency
- ③ 2013 VAE  2017 VQ-VAE  2022 LDM/Stable Diffusion(枢纽)  2022 DALL·E2  2022 Imagen
- ④ 2018 BigGAN(对照,左下)  2021 Dhariwal(classifier guidance)  2022 CFG
-    2023 DiT  2023 ControlNet  2024 SD3
- ⑤ 2024 VAR(前沿)  2025 Janus-Pro(最新, 标 ⚠ 引用待索引, 最右)
-
-实箭头 = builds-on（细线，沿时间从左指向右）：
- Vincent→DDPM ; Vincent→NCSN ; NCSN→Score-SDE ; Sohl-Dickstein→DDPM ; Sohl-Dickstein→Score-SDE
- DDPM→DDIM ; DDPM→Dhariwal ; DDPM→LDM ; DDPM→Imagen
- DDIM→DPM-Solver++ ; DDIM→Consistency ; Score-SDE→DPM-Solver++ ; Score-SDE→Consistency
- Dhariwal→CFG ; CFG→Imagen
- VAE→VQ-VAE ; VQ-VAE→LDM ; Dhariwal→LDM
- LDM→DiT ; LDM→ControlNet ; LDM→SD3 ; DiT→SD3
- VQ-VAE→VAR ; DiT→VAR   （VAR 承接离散 tokenizer 与 Transformer 骨干，却反超扩散）
-
-虚线 = parallel（竖向，无方向）： DiT ∥ ControlNet
-点线 = inspired-by： Dhariwal ┄→ DALL·E2 ; VAR ┄→ Janus-Pro
-橙色粗箭头 = supersedes： Dhariwal/扩散主干 ⇒ BigGAN（标注"超越 GAN"）
-
-橙色诚实性徽标（右下角）："真实论文 · 引用经 OpenAlex/S2 核验 ✓ · Zero-hallucination"
-Janus-Pro 旁标小号橙色"⚠ 2025 最新·引用待索引"——体现"越靠前沿、数据越新、越如实标注"
-```
-
----
-
-## 四、备选：更贴近"三段式"参考版（如果你想要更简洁）
-
-若想最贴近你给的三段参考图，可把四泳道压成**三段横向**：
-**① 奠基理论**（score matching · VAE · 热力学扩散）→ **② 核心突破与路线分化**（DDPM → Score-SDE / DDIM；LDM·DALL·E2·Imagen；classifier→CFG）→ **③ 近年前沿**（DiT · ControlNet · Consistency · SD3 · **VAR · Janus-Pro**，最右 Janus-Pro 标"2025 最新·⚠引用待索引"）。
-段间用细线箭头串联，橙色徽标与配色不变。提示词主体同上，只把"4 泳道"改成"3 段"、节点按段归并即可。
+1. 把上面 7 条泳道〈待命名〉改成真实路线名（如 频域路线 / CLIP 特征路线 / 重建误差路线）。
+2. 核对带 `?` 的关系标签与所有 ⚠ 边——它们是自动猜测/未验证，确认或修正后再出图。
+3. 其余结构（节点、连接、颜色语义）已与 lineage.json 一致，请勿改动。

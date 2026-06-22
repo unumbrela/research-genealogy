@@ -85,6 +85,56 @@ def quality_gate(path, c):
     c.ok(not g.errors, f"lint passes (curated){_show(g.errors)}")
 
 
+def figure_prompt_complete(path, c):
+    """The figure-prompt's value is its HARD checklist: every node and every edge
+    must appear verbatim so the image model can't invent connections. Guard that
+    completeness so a refactor can't silently drop a node or an edge."""
+    name = os.path.basename(path)
+    sys.path.insert(0, THIS)
+    import importlib
+    rt = importlib.import_module("render_tree")
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    nodes = {n["id"]: n for n in data.get("nodes", [])}
+    rt._LANG = "zh"
+    out = rt.render_figure_prompt(data, nodes)
+    edges = [e for e in data.get("edges", [])
+             if e["from"] in nodes and e["to"] in nodes]
+    print(f"\n[{name}] figure-prompt checklist")
+    c.ok(bool(out), "figure-prompt is non-empty")
+    missing = [n.get("authors") or nid for nid, n in nodes.items()
+               if (n.get("authors") or nid) not in out]
+    c.ok(not missing, f"every node appears in the prompt{_show(missing[:3])}")
+
+    def erow(e):
+        f, t = nodes[e["from"]], nodes[e["to"]]
+        return (f"{f.get('authors', e['from'])} {f.get('year', '')} | → | "
+                f"{t.get('authors', e['to'])} {t.get('year', '')} | "
+                f"{e.get('relation', 'builds-on')}")
+    missing_e = [erow(e) for e in edges if erow(e) not in out]
+    c.ok(not missing_e,
+         f"edge table lists all {len(edges)} edges{_show(missing_e[:2])}")
+
+
+def figure_prompt_extract(c):
+    """gen_figure.extract_prompt must keep the model-facing prose + hard checklist
+    while dropping the usage note and the 'give to author' section — so the image
+    relay receives the anti-hallucination edge list, not the meta-instructions."""
+    sys.path.insert(0, THIS)
+    import importlib
+    gf = importlib.import_module("gen_figure")
+    md = os.path.join(ROOT, "examples", "diffusion-models-figure-prompt.md")
+    if not os.path.exists(md):
+        return
+    p = gf.extract_prompt(open(md, encoding="utf-8").read())
+    print("\n[gen_figure] prompt extraction")
+    c.ok(bool(p.strip()), "extracted prompt is non-empty")
+    c.ok("起点" in p or "From" in p, "keeps the edge-table checklist")
+    c.ok("给作者的话" not in p and "Before you feed it" not in p,
+         "drops the 'author notes' section")
+    c.ok("用法：" not in p, "drops the usage note")
+
+
 def verify_ratio(path, c):
     """Re-verify a curated example against live OpenAlex/S2 and assert the
     verified ratio doesn't regress and nothing is reversed."""
@@ -163,6 +213,9 @@ def main():
         structural(path, c)
         if os.path.basename(path) not in SYNTHETIC:
             quality_gate(path, c)
+            figure_prompt_complete(path, c)
+
+    figure_prompt_extract(c)
 
     if args.online:
         for path in sorted(glob.glob(os.path.join(ROOT, "examples", "*.json"))):

@@ -247,7 +247,17 @@ python3 scripts/render_tree.py lineage.json --format mermaid    # GitHub-rendera
 python3 scripts/render_tree.py lineage.json --format markdown   # report: tree + table + edges
 python3 scripts/render_tree.py lineage.json --format bibtex     # cite every node
 python3 scripts/render_tree.py lineage.json --format drawio     # editable draw.io diagram
+python3 scripts/render_tree.py lineage.json --format figure-prompt  # image-model prompt
 ```
+
+`figure-prompt` builds a ready-to-feed prompt for an image model (GPT-image /
+Midjourney / DALL·E) that draws the genealogy as a publication figure. It has a
+prose body (subject, swimlanes, color semantics, style + negative constraints)
+**and a hard structure checklist** — every node and every edge listed verbatim,
+with ✓/⚠ marks — so the model can only draw the real connections, never invent
+them. The swimlanes come out as `路线①〈待命名〉`; **rename each to its real route
+name** (the branch names from Step 3 #5) before feeding it. `--lang en` for an
+English brief.
 
 ## Step 5 — deliver the report (the actual product)
 
@@ -295,6 +305,20 @@ Hard rules for the narrative:
   "然后 B 出现了". The builds-on/inspired-by edges ARE the story.
 - The 近两年前沿 section is mandatory and must name concrete new directions —
   a genealogy that stops 2–3 years ago is the #1 failure mode.
+
+**Optional — a publication figure.** If the user wants a diagram, generate the
+prompt with `render_tree.py lineage.json --format figure-prompt`, rename its
+`〈待命名〉` swimlanes to your Step 3 branch names, and feed the *whole* output
+(prose body **and** structure checklist) to an image model. See
+[`examples/diffusion-models-figure-prompt.md`](examples/diffusion-models-figure-prompt.md).
+To render the image automatically, pipe it through an OpenAI-compatible image
+relay with `scripts/gen_figure.py` (key/setup in
+[`image-relay.md`](image-relay.md)):
+
+```
+python3 scripts/gen_figure.py lineage.json --out figure.png            # data → prompt → image
+python3 scripts/gen_figure.py <renamed-prompt>.md --out figure.png     # from a refined prompt
+```
 
 ## Manual search passes (when the draft missed something)
 

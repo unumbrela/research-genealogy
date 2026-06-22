@@ -3,3 +3,6 @@ __pycache__/
 lineage.json
 *.local.json
 .DS_Store
+
+# local run artifacts (drafts, rendered outputs, generated figures)
+runs/
