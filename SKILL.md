@@ -25,9 +25,14 @@ real paper. A bare tree or a bare list is NOT done.
 
 ## Hard rules (avoid citation hallucination)
 
-- **Never invent papers, authors, years, or venues from memory.** Every node in
-  the genealogy MUST come from real metadata fetched by the scripts (OpenAlex /
-  Semantic Scholar). Your job is to *organize and narrate*, not to *recall*.
+- **Propose freely, but ground everything.** You SHOULD use your own knowledge
+  and `WebSearch` to name the field's landmark and newest papers (that recall is
+  the point — it beats a blind keyword search). But a proposed paper only becomes
+  a node after it is **resolved to a real record** by the scripts (`papers.py
+  resolve` / `--seed-titles`, OpenAlex / arXiv / Semantic Scholar). A title that
+  resolves to nothing stays in `_unresolved` — **never invent its authors, year,
+  venue, or citations to make it a node.** You *organize and narrate*; the
+  scripts *certify*.
 - **Ground every summary.** Write each node's `problem` / `contribution` from
   the paper's real abstract (the `_abstract` field in the draft, or
   `papers.py search "<title>" --abstract`), not from memory.
@@ -68,13 +73,42 @@ genuine branch.
 The final `field` label shown to the user stays in *their* language — edit it
 in the JSON afterwards.
 
-## Step 1 — generate the draft (one command)
+## Step 1 — research the field yourself (Claude proposes)
+
+Before running the pipeline, **act like the expert being asked "调研一下 X 方向"**.
+Using your own knowledge **and `WebSearch`**, name the papers that actually carry
+the field's story — 15–25 candidate titles spanning:
+
+- the **founding / landmark** works (the ones any survey opens with);
+- the **high-impact middle** (the methods everyone builds on);
+- the **2026 frontier** — and this is where `WebSearch` matters most, because
+  OpenAlex lags on the newest work. Search the live web:
+  `"<field> 2025 2026 survey"`, `"best <field> papers 2026 arXiv"`, the relevant
+  benchmark/leaderboard or lab pages, recent arXiv listings.
+
+Write the **exact titles** (resolution matches on the title) to `seeds.txt`, one
+per line. Don't worry about getting metadata right — the next step grounds every
+title to a real record and quarantines anything it can't find. You are supplying
+*recall*; the scripts supply *proof*.
+
+```
+python3 scripts/papers.py resolve --file seeds.txt   # optional: preview what grounds
+```
+
+## Step 2 — generate the draft (one command)
 
 ```
 python3 scripts/genealogy.py "<primary phrasing>" \
     --alias "<alias 1>" --alias "<alias 2>" --alias "<alias 3>" \
+    --seed-titles seeds.txt \
     --nodes 14 --out lineage.json
 ```
+
+`--seed-titles` resolves each title you proposed to real metadata and injects it
+as a **trusted node** (and as a snowball hub, so its real ancestors/heirs join
+the pool too). Titles that resolve nowhere land in the draft's `_unresolved`
+list — **re-find or drop them in Step 3; never invent them.** Omit `--seed-titles`
+to fall back to pure keyword search.
 
 **Read the diagnostics it prints.** Each phrasing reports its `precise hits`,
 and the pool reports its `core` size. If a phrasing got ~0 precise hits it
@@ -84,23 +118,26 @@ re-run with better phrasings beats an hour of manual repair.
 
 What the command does (so you know what you can trust):
 
-1. multi-pass keyword search (broad + precise + frontier);
-2. **arXiv frontier pass** — searches arXiv for the newest preprints (OpenAlex
+1. **seed grounding** (`--seed-titles`) — resolves the titles you proposed in
+   Step 1 to real records and injects them as trusted nodes + snowball hubs;
+   unresolved titles go to `_unresolved`, never invented;
+2. multi-pass keyword search (broad + precise + frontier);
+3. **arXiv frontier pass** — searches arXiv for the newest preprints (OpenAlex
    often lags months behind), back-resolves each to OpenAlex by title to recover
    real references; genuinely-unindexed ones are surfaced in
    `_frontier_candidates` (marked `source: arXiv …`) for you to verify and wire
    in by hand — they are never auto-added as trunk nodes;
-3. **snowball expansion** — pulls references + citing works of the field's core
-   papers, so landmarks the keywords missed still enter the pool;
-3. relevance gating anchored on the *core* (the largest mutually-citing cluster
+4. **snowball expansion** — pulls references + citing works of the field's core
+   papers (and your seeds), so landmarks the keywords missed still enter the pool;
+5. relevance gating anchored on the *core* (the largest mutually-citing cluster
    of precise matches) — off-topic keyword twins and generic mega-cited
-   backbones are dropped;
-4. **in-field scoring** — nodes are ranked by citations *within the pool*, so
+   backbones are dropped (your seeds are never gated out);
+6. **in-field scoring** — nodes are ranked by citations *within the pool*, so
    the field's true landmarks beat globally-famous tangents;
-5. era-stratified selection (founders + hubs + frontier), then edges straight
-   from the real citation graph with **transitive reduction** (A→C is dropped
-   when A→B→C exists) and **parallel detection** (same-era pairs that share
-   references but don't cite each other).
+7. era-stratified selection (your seeds reserved first, then founders + hubs +
+   frontier), then edges straight from the real citation graph with **transitive
+   reduction** (A→C is dropped when A→B→C exists) and **parallel detection**
+   (same-era pairs that share references but don't cite each other).
 
 Every `builds-on` edge in the draft is a real citation and arrives pre-marked
 `"verified": "verified"`. The draft also carries:
@@ -108,11 +145,12 @@ Every `builds-on` edge in the draft is a real citation and arrives pre-marked
 - `_stats` — `orphans` (nodes with no edges) and `roots`;
 - `_frontier_candidates` — strong recent (last ~2 years) papers that did NOT
   make the cut, with abstracts;
-- `_alternates` — other high-scoring papers that just missed selection.
+- `_alternates` — other high-scoring papers that just missed selection;
+- `_unresolved` — seed titles that resolved to no real record (Step 3 handles).
 
 Use the two candidate pools to **swap in better nodes without re-searching**.
 
-## Step 2 — refine the draft (this is your real job)
+## Step 3 — refine the draft (this is your real job)
 
 Work through ALL of these, editing `lineage.json` directly:
 
@@ -127,6 +165,12 @@ Work through ALL of these, editing `lineage.json` directly:
 2. **Fix orphans** (`_stats.orphans`): either find the node's real citation
    link via `expand` and add the edge, or delete the node. An orphan box helps
    nobody.
+2b. **Resolve the `_unresolved` list** (seed titles that grounded to nothing):
+   for each, try a corrected/exact title (`papers.py resolve "<title>"`, or
+   `WebSearch` for the real title), and if it now resolves, wire it in via
+   `papers.py search "<title>" --abstract` + `expand`. If it still resolves to
+   nothing, **drop it** — never promote an unresolved title to a node. Delete the
+   `_unresolved` key when the list is handled.
 3. **Rewrite every `problem` / `contribution`** as one crisp line each, in the
    user's language, from the node's `_abstract` — the seeded text is just the
    abstract's first sentence. `problem` = what was broken/missing before this
@@ -172,9 +216,9 @@ python3 scripts/lint.py lineage.json
 
 It hard-checks exactly the rules below and fails on any unmet one:
 
-- **Step 2 finished**: no blank `problem`/`contribution`, no leftover
-  `_abstract` keys, draft scaffolding (`_stats` etc.) removed, summaries no
-  longer raw abstract seeds.
+- **Refinement finished**: no blank `problem`/`contribution`, no leftover
+  `_abstract` keys, draft scaffolding (`_stats`, `_unresolved`, etc.) removed,
+  summaries no longer raw abstract seeds.
 - **No star topology**: the deepest chain is ≥ 3 edges and no node has 6+ direct
   children (reroute children to their real, *nearest* predecessor).
 - **Reaches the present with a real frontier**: max year ≥ now−2 AND ≥ 3 nodes
@@ -186,7 +230,7 @@ It hard-checks exactly the rules below and fails on any unmet one:
 Fix what it flags and re-run until it passes. (Curated/frozen example files use
 `--curated` to relax the now-relative frontier check.)
 
-## Step 3 — render
+## Step 4 — render
 
 ```
 python3 scripts/render_tree.py lineage.json
@@ -205,7 +249,7 @@ python3 scripts/render_tree.py lineage.json --format bibtex     # cite every nod
 python3 scripts/render_tree.py lineage.json --format drawio     # editable draw.io diagram
 ```
 
-## Step 4 — deliver the report (the actual product)
+## Step 5 — deliver the report (the actual product)
 
 Write the report to `<field-slug>-genealogy.md` AND present its narrative +
 tree in the conversation. Everything in the user's language. Template:
@@ -258,13 +302,17 @@ Hard rules for the narrative:
 python3 scripts/papers.py search "<direction>" --limit 30            # anchor
 python3 scripts/papers.py search "<direction>" --precise --from-year 2024 \
     --sort citations --limit 15                                      # frontier
+python3 scripts/papers.py --source arxiv search "<direction>" \
+    --from-year 2025 --limit 15                                      # newest preprints
 python3 scripts/papers.py search "<exact title>" --abstract --limit 1 # landmark
+python3 scripts/papers.py resolve "<title A>" "<title B>" …          # ground a list
 python3 scripts/papers.py expand <paperId> --limit 40                # lineage
 ```
 
 `--precise` requires every term in title/abstract — use it whenever a relevance
 search returns off-topic giants. `--from-year/--to-year` window, `--sort
-relevance|citations|recent`.
+relevance|citations|recent`. `--source arxiv` hits the newest preprints
+directly; `resolve` grounds free-text titles you (or `WebSearch`) found.
 
 ## Robustness (so you fight the tool less)
 

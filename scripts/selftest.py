@@ -109,6 +109,22 @@ def verify_ratio(path, c):
          f"verified ratio {ver}/{cite_edges} = {ratio:.0%} ≥ 75%")
 
 
+def resolve_smoke(c):
+    """The grounding step that keeps 'Claude proposes, scripts verify'
+    zero-hallucination: a real title resolves to a real record, a fabricated one
+    resolves to nothing (never invented)."""
+    sys.path.insert(0, THIS)
+    import importlib
+    papers = importlib.import_module("papers")
+    print("\n[resolve] title grounding")
+    real = papers.resolve_title("Denoising Diffusion Probabilistic Models")
+    c.ok(bool(real and real.get("year") == 2020),
+         f"real title resolves to a real record "
+         f"(got {real.get('year') if real else None})")
+    junk = papers.resolve_title("A Completely Fabricated Paper That Cannot Exist 9999")
+    c.ok(junk is None, "fabricated title resolves to None (not invented)")
+
+
 def live_draft(c):
     """Run one small live draft and assert the pipeline produces a connected,
     on-topic genealogy (orphan repair + topic gate working end to end)."""
@@ -152,6 +168,7 @@ def main():
         for path in sorted(glob.glob(os.path.join(ROOT, "examples", "*.json"))):
             if os.path.basename(path) not in SYNTHETIC:
                 verify_ratio(path, c)
+        resolve_smoke(c)
         live_draft(c)
 
     print()

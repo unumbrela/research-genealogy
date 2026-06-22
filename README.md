@@ -95,6 +95,16 @@ Stdlib-only scripts, no pip install, no API key required.
 
 Four stages, left to right: **① 输入与检索词派生** (a research direction → 1 primary + 2–3 alias English phrasings) → **② 真实引用图谱挖掘 (OpenAlex)** (multi-pass `broad / precise / frontier` search + citation `snowball` over references & citing works) → **③ 谱系构建管线** (`relevance gate` → `in-field scoring` → edge derivation with transitive reduction & parallel detection → a draft `lineage.json`) → **④ 非线性发展族谱报告** (Claude refines summaries/relations from real abstracts, then renders the ASCII genealogy tree + an era-by-era report). The orange **零幻觉 / Zero-hallucination** thread is the invariant: every node is real OpenAlex metadata and every `builds-on` edge is a `✓ verified` real citation.
 
+**Claude proposes, the scripts verify.** Stage ② is not just blind keyword
+search: Claude first researches the field with its own knowledge **and live
+`WebSearch`** (the way you'd answer "调研一下 X 方向") and names the landmark and
+newest papers — then *every proposed title is resolved to a real record* before
+it can become a node (`--seed-titles` / `papers.py resolve`). This combines an
+expert's recall with hard grounding: a title that resolves to nothing is listed
+in `_unresolved`, never invented. For the **2026 frontier**, WebSearch plus a
+dedicated **arXiv pass** catch the newest preprints OpenAlex hasn't indexed yet —
+arXiv-only papers are kept honest (real arXiv metadata, no fabricated citations).
+
 ## Install
 
 ```bash
@@ -184,10 +194,19 @@ python3 scripts/genealogy.py "machine learning chemical reaction prediction" \
     --alias "reaction yield prediction machine learning" \
     --alias "large language models chemistry reactions" \
     --nodes 14 --render
+
+# best results: let Claude name the key + newest papers first (knowledge +
+# WebSearch), write them to seeds.txt, then ground them all
+python3 scripts/genealogy.py "diffusion models image generation" \
+    --alias "latent diffusion text-to-image" \
+    --seed-titles seeds.txt --nodes 14 --render
 ```
 
-The draft pipeline (all from real OpenAlex metadata):
+The draft pipeline (all grounded in real metadata):
 
+0. **seed grounding** (`--seed-titles`) — resolves the titles Claude proposed
+   (its knowledge + WebSearch) to real OpenAlex/arXiv records and injects them as
+   trusted nodes; titles that resolve nowhere go to `_unresolved`, never invented;
 1. **multi-pass search** — broad + precise + frontier (recent work that
    citation-sort would bury);
 2. **arXiv frontier pass** — pulls the newest preprints (OpenAlex can lag months

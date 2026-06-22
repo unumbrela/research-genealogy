@@ -242,7 +242,7 @@ def _resolve_arxiv_to_oa(p):
 
 # ------------------------------------------------------------------ collect --
 def collect(direction, aliases=(), from_year=None, to_year=None,
-            expand_hubs=6):
+            expand_hubs=6, seed_titles=()):
     """Multi-pass keyword search + citation snowball, over the primary
     direction AND its alias phrasings (a field is usually named several ways —
     one query never covers all branches). Dedups by id AND by normalized title
@@ -274,6 +274,8 @@ def collect(direction, aliases=(), from_year=None, to_year=None,
                         prev["abstract"] = abstract
                 prev["referenced_works"] = sorted(refs)
                 prev["_precise"] = prev.get("_precise") or precise
+                if p.get("_seed"):
+                    prev["_seed"] = True       # a keyword hit confirming a seed
                 by_id[p["id"]] = prev
                 continue
             p["_via"], p["_precise"] = via, precise
@@ -281,6 +283,25 @@ def collect(direction, aliases=(), from_year=None, to_year=None,
             if tkey:
                 by_title[tkey] = p
             pool.append(p)
+
+    # pass 0.5 — Claude-proposed seeds: resolve each title to a REAL record and
+    # inject it as a trusted, on-topic pool member. This is the "Claude proposes,
+    # scripts verify" path: Claude's recall (its knowledge + WebSearch) names the
+    # landmarks and the newest work; resolution keeps every node grounded. A
+    # title that resolves nowhere is returned in `unresolved` and never invented.
+    unresolved = []
+    if seed_titles:
+        resolved, unresolved = papers.resolve_titles(list(seed_titles),
+                                                      with_abstract=True)
+        for rec in resolved:
+            rec["_seed"] = True
+            if rec.get("referenced_works"):
+                add([rec], "seed", precise=True)   # joins the citation graph
+            else:                                  # arXiv/S2-only: ref-less, so
+                rec["_no_refs"] = True             # frontier candidate, not trunk
+                add([rec], "arxiv")
+        print(f"      seeds: {len(resolved)} resolved, {len(unresolved)} "
+              f"unresolved", file=sys.stderr)
 
     # pass 1 — keyword seeds (broad recall, precision, frontier x2), repeated
     # for every phrasing; the primary query gets the deepest passes
@@ -340,13 +361,19 @@ def collect(direction, aliases=(), from_year=None, to_year=None,
               f"preprint(s) not yet in OpenAlex", file=sys.stderr)
 
     if not seeds or not expand_hubs:
-        return _topic_gate(pool, core, qsets, vocab)
+        return _topic_gate(pool, core, qsets, vocab), unresolved
 
     # pass 2 — snowball, but ONLY from core hubs: picking hubs by raw global
     # citations (or even by text match alone) expands from tangential
-    # mega-cited papers and floods the pool with generic vision/ML classics
+    # mega-cited papers and floods the pool with generic vision/ML classics.
+    # Claude-proposed seeds (with refs) are always hubs — pulling their
+    # references + citers gives the curated lineage its real ancestors/heirs.
+    seed_hubs = [p for p in pool if p.get("_seed") and p.get("referenced_works")]
     hubs = sorted(core, key=lambda p: p.get("citations") or 0,
                   reverse=True)[:expand_hubs]
+    for h in seed_hubs:
+        if h not in hubs:
+            hubs.append(h)
 
     refc = Counter()                     # references co-cited by several hubs
     for h in hubs:
@@ -365,7 +392,7 @@ def collect(direction, aliases=(), from_year=None, to_year=None,
         add([p for p in papers.oa_citers(h["id"], 10, with_abstract=True,
                                          sort="recent")
              if p.get("year") and on_topic(p, qsets, vocab)], "cite")
-    return _topic_gate(pool, core, qsets, vocab)
+    return _topic_gate(pool, core, qsets, vocab), unresolved
 
 
 def _fix_dup_years(pool, by_id):
@@ -438,6 +465,9 @@ def _topic_gate(pool, core, qsets, vocab):
     cap = 30 * max(cmax, 100)
     kept, drift = [], 0
     for p in pool:
+        if p.get("_seed"):
+            kept.append(p)                 # Claude-curated: never gate it out
+            continue
         if p["id"] in core_ids:
             kept.append(p)
             continue
@@ -519,6 +549,22 @@ def select(pool, k):
                    or p["id"] in (c.get("referenced_works") or [])
                    for c in chosen)
 
+    def bucket(p):
+        return sum(1 for c in cuts if p["year"] > c)
+
+    # seeds first — Claude's curated picks are the whole point of this mode, so
+    # the linked ones are reserved up front (era-capped so one era can't hog the
+    # budget). Ref-less arXiv-only seeds aren't here — they have no links and
+    # stay frontier candidates the refiner wires in by hand.
+    seedcap = max(2, math.ceil(k / 3))
+    for p in sorted((p for p in linked_pool if p.get("_seed")),
+                    key=lambda p: p["_score"], reverse=True):
+        if len(chosen) >= k:
+            break
+        if sum(1 for c in chosen if bucket(c) == bucket(p)) >= seedcap:
+            continue
+        take(p)
+
     # founders — earliest era, must actually be cited by the field
     early = sorted((p for p in linked_pool
                     if p["year"] <= cuts[0] and p["_in_cited"] >= 1),
@@ -545,10 +591,6 @@ def select(pool, k):
 
     # trunk — by in-field score, era-balanced; prefer connected candidates
     cap = max(2, math.ceil(k / 3))
-
-    def bucket(p):
-        return sum(1 for c in cuts if p["year"] > c)
-
     rest = sorted(linked_pool, key=lambda p: p["_score"], reverse=True)
     for require_link in (True, False):
         for p in rest:
@@ -660,7 +702,7 @@ def _cand_view(p):
 
 
 # -------------------------------------------------------------------- build --
-def build(direction, chosen, pool=()):
+def build(direction, chosen, pool=(), unresolved=()):
     taken, slug = set(), {}
     nodes = []
     for p in chosen:
@@ -712,10 +754,16 @@ def build(direction, chosen, pool=()):
                       key=lambda p: -(p.get("year") or 0))
     frontier_cands = (oa_front[:7] + ax_front[:4])[:11]
     alternates = [p for p in rest if p not in frontier_cands][:8]
-    return {"field": direction, "_stats": stats, "nodes": nodes,
-            "edges": edges,
-            "_frontier_candidates": [_cand_view(p) for p in frontier_cands],
-            "_alternates": [_cand_view(p) for p in alternates]}
+    out = {"field": direction, "_stats": stats, "nodes": nodes,
+           "edges": edges,
+           "_frontier_candidates": [_cand_view(p) for p in frontier_cands],
+           "_alternates": [_cand_view(p) for p in alternates]}
+    if unresolved:
+        # titles Claude proposed that resolved to NO real record — surfaced so
+        # the refiner re-finds (better title / WebSearch / phrasing) or drops
+        # them. They are never turned into nodes: no record, no node.
+        out["_unresolved"] = list(unresolved)
+    return out
 
 
 def link_orphans(data, chosen, prune=False):
@@ -842,6 +890,15 @@ def main():
                     dest="suggest_aliases",
                     help="Step 0 aid: print candidate alias phrasings mined from "
                          "a seed search, then exit (no draft is written)")
+    ap.add_argument("--seed-titles", dest="seed_titles_file",
+                    help="file of Claude-proposed paper titles (one per line, "
+                         "# = comment); each is resolved to real metadata and "
+                         "injected as a trusted node. The 'Claude proposes, "
+                         "scripts verify' path — find titles with your knowledge "
+                         "+ WebSearch, this grounds them.")
+    ap.add_argument("--seed", action="append", default=[],
+                    help="a single Claude-proposed title (repeatable; "
+                         "alternative to --seed-titles)")
     ap.add_argument("--render", action="store_true")
     args = ap.parse_args()
 
@@ -849,11 +906,22 @@ def main():
         suggest_aliases(args.direction)
         return
 
+    seed_titles = list(args.seed)
+    if args.seed_titles_file:
+        with open(args.seed_titles_file, encoding="utf-8") as f:
+            seed_titles += [ln.strip() for ln in f if ln.strip()
+                            and not ln.lstrip().startswith("#")]
+
     label = " / ".join([args.direction] + args.alias) if args.alias \
         else args.direction
     print(f"[1/4] searching “{label}” …", file=sys.stderr)
-    pool = collect(args.direction, args.alias, args.from_year, args.to_year,
-                   expand_hubs=0 if args.no_expand else 6)
+    if seed_titles:
+        print(f"      grounding {len(seed_titles)} Claude-proposed seed title(s)"
+              " …", file=sys.stderr)
+    pool, unresolved = collect(args.direction, args.alias, args.from_year,
+                               args.to_year,
+                               expand_hubs=0 if args.no_expand else 6,
+                               seed_titles=seed_titles)
     if not pool:
         raise SystemExit("no papers found — try a different (English) phrasing")
     print(f"      {len(pool)} candidates "
@@ -874,7 +942,11 @@ def main():
 
     print("[4/4] deriving citation edges (transitive reduction) …",
           file=sys.stderr)
-    data = build(args.direction, chosen, pool)
+    data = build(args.direction, chosen, pool, unresolved)
+    if data.get("_unresolved"):
+        print(f"      ⚠ {len(data['_unresolved'])} seed title(s) did not "
+              f"resolve — see _unresolved (re-find or drop, never invent)",
+              file=sys.stderr)
     if data["_stats"]["orphans"]:
         added, pruned = link_orphans(data, chosen, prune=args.prune_orphans)
         if added or pruned:

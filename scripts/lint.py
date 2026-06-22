@@ -27,7 +27,7 @@ REL_OK = {"builds-on", "inspired-by", "parallel", "supersedes"}
 CITE_REL = {"builds-on", "inspired-by", "supersedes"}      # directed lineage
 SURVEY = re.compile(r"\b(survey|review|overview|advances|challenges)\b", re.I)
 # draft scaffolding that should be gone from a delivered file
-DRAFT_KEYS = ("_stats", "_frontier_candidates", "_alternates")
+DRAFT_KEYS = ("_stats", "_frontier_candidates", "_alternates", "_unresolved")
 
 
 class Gate:

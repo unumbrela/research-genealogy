@@ -516,6 +516,44 @@ def s2_reference_keys(node, limit=400):
     return titles, exts
 
 
+# --------------------------------------------------- title resolution (v6) ----
+def resolve_title(title, with_abstract=True):
+    """Resolve a free-text paper title (proposed by Claude from knowledge or
+    WebSearch) to a REAL metadata record — the grounding step that keeps the
+    "Claude proposes, scripts verify" workflow zero-hallucination.
+
+    Tries OpenAlex first (carries `referenced_works` → the paper can join the
+    citation graph), then arXiv (often the only home of a brand-new preprint),
+    then Semantic Scholar. Every candidate must pass `_title_close`, so a near
+    miss is rejected rather than silently grabbing a different paper. Returns the
+    record, or None if nothing matches — the caller must NOT invent one."""
+    if not title or not title.strip():
+        return None
+    for h in oa_search(title, 5, with_abstract=with_abstract):
+        if h and _title_close(h.get("title"), title):
+            return h
+    for h in ax_search(title, 5):
+        if h and _title_close(h.get("title"), title):
+            return h
+    for h in (s2_search(title, 5, with_abstract=with_abstract, soft=True) or []):
+        if h and _title_close(h.get("title"), title):
+            return h
+    return None
+
+
+def resolve_titles(titles, with_abstract=True):
+    """Resolve many titles; return (resolved_records, unresolved_titles)."""
+    resolved, unresolved = [], []
+    for t in titles:
+        rec = resolve_title(t, with_abstract=with_abstract)
+        if rec:
+            resolved.append(rec)
+        else:
+            unresolved.append(t)
+        time.sleep(0.1)
+    return resolved, unresolved
+
+
 # ----------------------------------------------------------------- dispatch ---
 def cmd_search(args):
     if args.source == "openalex":
@@ -556,6 +594,21 @@ def cmd_expand(args):
     print()
 
 
+def cmd_resolve(args):
+    titles = list(args.titles or [])
+    if args.file:
+        with open(args.file, encoding="utf-8") as f:
+            titles += [ln.strip() for ln in f if ln.strip()
+                       and not ln.lstrip().startswith("#")]
+    resolved, unresolved = resolve_titles(titles, with_abstract=args.abstract)
+    for p in resolved:
+        p.pop("referenced_works", None)        # keep stdout compact
+    json.dump({"count": len(titles), "resolved": resolved,
+               "unresolved": unresolved},
+              sys.stdout, ensure_ascii=False, indent=2)
+    print()
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -587,6 +640,15 @@ def main():
     e.add_argument("--abstract", action="store_true",
                    help="include the focal paper's real abstract")
     e.set_defaults(func=cmd_expand)
+
+    r = sub.add_parser("resolve", help="ground Claude-proposed titles to real "
+                       "metadata (OpenAlex/arXiv/S2); prints resolved + "
+                       "unresolved so nothing is invented")
+    r.add_argument("titles", nargs="*", help="paper titles (or use --file)")
+    r.add_argument("--file", help="file with one title per line (# = comment)")
+    r.add_argument("--abstract", action="store_true", default=True,
+                   help="include abstracts (on by default for grounding)")
+    r.set_defaults(func=cmd_resolve)
 
     args = ap.parse_args()
     args.func(args)
