@@ -140,13 +140,20 @@ def _title_close(a, b):
 _BAD_ABS = re.compile(
     r"docker (?:pull|run)|git clone|pip install|conda install|"
     r"requirements\.txt|https?://github\.com|```", re.I)
+# a real abstract is a single prose block; a full-text/body dump pasted in its
+# place opens with section scaffolding ("1. Introduction", "1 Introduction In
+# this study …") — the DDPM / W3036167779 case, whose stored abstract is an
+# unrelated 'DiffuCpG' paper body
+_BODY_DUMP = re.compile(r"\b\d{1,2}\.?\s+Introduction\b", re.I)
 
 
 def _abstract_looks_bad(title, abstract):
-    """Detect a polluted/garbage OpenAlex abstract — e.g. a repo README pasted
-    in place of the real one (see DDPM / W3036167779, whose abstract is an
-    unrelated 'DiffuCpG' install guide). True when empty or code-like."""
+    """Detect a polluted/garbage OpenAlex abstract — a repo README or a different
+    paper's full text pasted in place of the real one. True when empty, code-like,
+    or opening with section scaffolding instead of prose."""
     if not abstract or len(abstract) < 40:
+        return True
+    if _BODY_DUMP.search(abstract[:60]):
         return True
     return bool(_BAD_ABS.search(abstract))
 

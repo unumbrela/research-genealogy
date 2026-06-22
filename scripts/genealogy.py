@@ -556,33 +556,50 @@ def select(pool, k):
     # the linked ones are reserved up front (era-capped so one era can't hog the
     # budget). Ref-less arXiv-only seeds aren't here — they have no links and
     # stay frontier candidates the refiner wires in by hand.
-    seedcap = max(2, math.ceil(k / 3))
-    for p in sorted((p for p in linked_pool if p.get("_seed")),
-                    key=lambda p: p["_score"], reverse=True):
-        if len(chosen) >= k:
-            break
-        if sum(1 for c in chosen if bucket(c) == bucket(p)) >= seedcap:
-            continue
-        take(p)
+    # Take ALL linked seeds — a Claude-curated landmark beats any keyword-pool
+    # paper (including domain-drift papers that merely cite the core), so seeds
+    # fill the budget BEFORE founders/frontier/trunk. Only if seeds alone exceed
+    # the budget do we trim to an era-balanced spread (rare; the user controls it
+    # with --nodes). This is the whole point of seed mode: seeds win.
+    seed_nodes = sorted((p for p in linked_pool if p.get("_seed")),
+                        key=lambda p: p["_score"], reverse=True)
+    if len(seed_nodes) <= k:
+        for p in seed_nodes:
+            take(p)
+    else:
+        percap = max(1, math.ceil(k / 4))
+        for p in seed_nodes:                  # era-balanced first pass
+            if len(chosen) >= k:
+                break
+            if sum(1 for c in chosen if bucket(c) == bucket(p)) < percap:
+                take(p)
+        for p in seed_nodes:                  # then fill leftover, ignore cap
+            if len(chosen) >= k:
+                break
+            take(p)
 
-    # founders — earliest era, must actually be cited by the field
+    # founders — earliest era, must actually be cited by the field (top-up only)
     early = sorted((p for p in linked_pool
                     if p["year"] <= cuts[0] and p["_in_cited"] >= 1),
                    key=lambda p: (p["_in_cited"], p.get("citations") or 0),
                    reverse=True)
     for p in early[:2]:
+        if len(chosen) >= k:
+            break
         take(p)
 
     # frontier — last ~2 years, must build on the pool (or be a precise hit).
     # Method papers outrank surveys: a frontier slot should show where the
-    # field is GOING, and one survey is plenty
+    # field is GOING, and one survey is plenty (top-up only — seeds may have
+    # already filled it)
     nf, got = (3 if k >= 12 else 2), 0
     frontier = sorted((p for p in pool if p["year"] >= max(y1 - 1, NOW - 2)),
                       key=lambda p: (not _is_survey(p),
                                      (p.get("citations") or 0)
                                      + 5 * p["_in_cites"]), reverse=True)
+    got = sum(1 for c in chosen if c["year"] >= max(y1 - 1, NOW - 2))
     for p in frontier:
-        if got >= nf:
+        if got >= nf or len(chosen) >= k:
             break
         if _is_survey(p) and any(_is_survey(c) for c in chosen):
             continue
@@ -609,9 +626,49 @@ def select(pool, k):
 
 
 # -------------------------------------------------------------------- edges --
+def _augment_refs_via_s2(chosen):
+    """Recent papers routinely have EMPTY OpenAlex reference lists (SD3, VAR, EDM
+    all return 0), which leaves them orphaned in the citation graph. Fill the gaps
+    from Semantic Scholar — the same fallback verify.py trusts: for a node whose
+    OpenAlex refs don't reach the rest of the selection, pull its S2 references and,
+    for any that match another selected node (normalized title / DOI / arXiv), add
+    that node's OpenAlex id to this node's referenced_works so derive_edges links
+    them. Real citations only — nothing invented. No-op if S2 is unavailable."""
+    nt = {_norm_title(p["title"]): p["id"] for p in chosen if p.get("title")}
+    doi = {str(p["doi"]).lower(): p["id"] for p in chosen if p.get("doi")}
+    arx = {str(p["arxiv"]).lower(): p["id"] for p in chosen if p.get("arxiv")}
+    ids = {p["id"] for p in chosen}
+    filled = 0
+    for p in chosen:
+        have = set(p.get("referenced_works") or [])
+        covered = len(have & ids)
+        if len(have) >= 20 and covered >= 1:
+            continue                          # OpenAlex data is good enough here
+        titles, exts = papers.s2_reference_keys(p)
+        if not titles and not exts:
+            continue
+        added = set()
+        for t in titles:
+            if t in nt and nt[t] != p["id"]:
+                added.add(nt[t])
+        for e in exts:
+            if e in doi and doi[e] != p["id"]:
+                added.add(doi[e])
+            if e in arx and arx[e] != p["id"]:
+                added.add(arx[e])
+        new = added - have
+        if new:
+            p["referenced_works"] = sorted(have | new)
+            filled += len(new)
+    if filled:
+        print(f"      S2 ref-fallback: added {filled} real citation link(s) "
+              f"OpenAlex was missing", file=sys.stderr)
+
+
 def derive_edges(chosen, slug):
     """Citation-derived lineage: transitive reduction + nearest-predecessor
     parents + parallel-pair detection. Returns ready-to-render edge dicts."""
+    _augment_refs_via_s2(chosen)
     ids = {p["id"]: p for p in chosen}
     raw = set()
     for b, pb in ids.items():
@@ -705,6 +762,15 @@ def _cand_view(p):
 def build(direction, chosen, pool=(), unresolved=()):
     taken, slug = set(), {}
     nodes = []
+    # repair polluted / empty abstracts (e.g. an OpenAlex record whose abstract
+    # is some unrelated repo's README — DDPM's "DiffuCpG …") from Semantic
+    # Scholar, so the seeded problem/contribution summaries aren't garbage
+    for p in chosen:
+        if papers._abstract_looks_bad(p.get("title"), p.get("abstract")):
+            fixed = papers.s2_abstract(p.get("title"), p.get("doi"),
+                                       p.get("arxiv"))
+            if fixed:
+                p["abstract"] = fixed
     for p in chosen:
         s = _slug(p.get("authors"), p.get("year"), taken)
         slug[p["id"]] = s
