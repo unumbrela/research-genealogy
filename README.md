@@ -14,31 +14,33 @@ lines), not a flat timeline.
 
 *(featured example — full report: [`examples/diffusion-models-genealogy.md`](examples/diffusion-models-genealogy.md))*
 
-**「扩散模型图像生成」发展历程 · 21 篇关键论文 · 2011 → 2025 · 引用边 25 ✓ / 1 ∥ / 2 ⚠**
+**「扩散模型图像生成」发展历程 · 18 篇关键论文 · 2015 → 2025 · 引用边 13 ✓ / 1 ∥ / 2 ‼ / 6 ⚠**
 
-![扩散模型图像生成的发展历程（2011→2025）：5 条技术路线的横向时间线谱系，引用经 OpenAlex/Semantic Scholar 核验](assets/diffusion-genealogy.png)
+![扩散模型图像生成的发展历程：多条技术路线的横向时间线谱系，引用经 OpenAlex/Semantic Scholar 核验](assets/diffusion-genealogy.png)
+
+*（图为早先 21 节点（2011→2025）那一版的渲染；下方 ASCII 摘录与链接报告为最新 18 节点（2015→2025）版本。）*
 
 The same genealogy is what the skill actually emits as a **terminal ASCII tree** (excerpt):
 
 ```
-      ╭──────────────────────────────────────────────────────────────╮
-      │ 扩散模型图像生成 (Diffusion Models)  ·  21 papers · 2011 → 2025 │
-      ╰──────────────────────────────────────────────────────────────╯
- 2011 │ ● Vincent ─ score matching → NCSN (2019) → ◉ Score-SDE (2020) ✓   分数/SDE 总纲
+      ╭────────────────────────────────────────────────────────────────╮
+      │ 扩散模型图像生成 (Diffusion Models)  ·  18 papers · 2015 → 2025 │
+      ╰────────────────────────────────────────────────────────────────╯
  2015 │ ● Sohl-Dickstein ─ 扩散奠基（非平衡热力学）
- 2020 │   └─ ◉ Ho — DDPM ✓   引爆点：扩散追平 GAN   → builds-on: Vincent
- 2020 │        ├─ ○ J. Song — DDIM ✓  确定性快速采样 → DPM-Solver++ · Consistency
- 2021 │        └─ ◉ Dhariwal ✓   ⇒ supersedes BigGAN (2018)
- 2022 │             ├─ ★ Ho&Salimans — CFG ✓  文生图总开关 → Imagen ✓
- 2022 │             ├─ ◉ Rombach — LDM / Stable Diffusion ✓  （VQ-VAE + DDPM 汇合）
- 2023 │             │   ├─ ★ Peebles — DiT ✓  Transformer 骨干+scaling   ∥ ControlNet ✓
- 2024 │             │   │   ├─ ★ Esser — SD3 ✓   rectified flow 新范式
- 2024 │             │   │   └─ ★ VAR ✓   自回归「下一分辨率」反超扩散
- 2025 │             │   │         └┈ ★ Janus-Pro ⚠   统一多模态生成（最新·引用待索引）
- 2022 │             └┈ ◉ Ramesh — DALL·E 2 ✓   unCLIP 路线
+ 2019 │ ● Yang Song ─ NCSN（score matching）→ Score-SDE (2020) → EDM (2022)   分数/SDE 总纲
+ 2020 │   └─ ◉ Ho — DDPM ✓   引爆点：扩散追平 GAN
+ 2020 │        ├─ ○ J. Song — DDIM ✓  确定性快速采样
+ 2021 │        └─ ◉ Dhariwal — Beat GANs ✓   架构 + classifier guidance 确立 SOTA
+ 2022 │             ├─ ★ Ho — CFG ✓  文生图总开关 → Imagen ✓
+ 2022 │             ├─ ◉ Ramesh — DALL·E 2 ✓   unCLIP 路线
+ 2022 │             └─ ◉ Rombach — LDM / Stable Diffusion ✓  潜空间扩散（全树最高引用）
+ 2023 │                  ├─ ★ Peebles — DiT ✓  Transformer 骨干 + scaling
+ 2024 │                  │   ├─ ★ Esser — SD3 ✓   rectified flow → FLUX.1 Kontext (2025) ⚠
+ 2024 │                  │   └─ ★ VAR ✓   自回归「下一尺度」∥ SD3 → Janus-Pro (2025) ⚠
+ 2023 │                  └─ ★ Zhang — ControlNet ✓  即插即用可控生成
 
       ● founder ◉ hub ★ frontier · ├─ builds-on ├┈ inspired-by ∥ parallel ⇒ supersedes
-      citations: ✓ 25 verified · ∥ 1 parallel · ⚠ 2 (近年论文参考文献待上游索引)
+      citations: ✓ 13 verified · ∥ 1 parallel · ‼ 2 mutual · ⚠ 6 (近年论文参考文献待上游索引)
 ```
 
 > A left **year axis**, role markers (**●** founder / **◉** hub / **★** frontier),

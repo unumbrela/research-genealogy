@@ -1,134 +1,182 @@
 # 扩散模型图像生成 发展历程
 
-> 从「学习去噪 = 估计 score」的理论火种，到 DDPM 引爆、连续时间统一、潜空间文生图三雄并起，再到 Transformer 骨干、精确可控、flow-matching 新范式，直至**自回归范式回潮与统一多模态生成** · **2011–2025 · 21 篇关键论文 · 5 条技术路线** · 引用边经 OpenAlex/S2 核验（**25 ✓ · 1 ∥ · 2 ⚠**，⚠ 为近年论文参考文献尚未被索引所致，下文说明）
+> 从非平衡热力学的理论奠基，到 Stable Diffusion / DALL·E 2 引爆文生图，再到 DiT/rectified flow 架构革命与 2024–25 的自回归·统一多模态新范式
+> · 2015–2025 · 18 篇关键论文 · 22 条引用边经 OpenAlex / Semantic Scholar 校验（✓13 已验证 / ∥1 并行 / ‼2 互引 / ⚠6 参考文献待索引）
+> · 由 [research-genealogy](https://github.com/unumbrela/research-genealogy) 生成（Claude 点名 + 脚本核验）
 
 ## 全景谱系树
 
+`scripts/render_tree.py diffusion-models-lineage.json --no-color` 的实际输出
+（左侧为年份轴，● 奠基 / ◉ 枢纽 / ★ 前沿，每条边带 ✓/⚠ 校验标记）：
+
 ```
-扩散模型图像生成 (Diffusion Models for Image Generation) · 21 papers · 2011 → 2025
+      ╭──────────────────────────────────────────────────────────╮
+      │ 扩散模型图像生成 (Diffusion Models for Image Generation) │
+      │ 18 papers  ·  2015 → 2025                                │
+      ╰──────────────────────────────────────────────────────────╯
+      │
+ 2015 │  ● Jascha Sohl‐Dickstein et al.   █████░░ 1417
+      │     “Deep Unsupervised Learning using Nonequilibrium Thermodynamics”
+      │       生成模型长期在「表达力强」与「可解析采样/推断」之间二选一 ⇒ 借非平衡热力学：前向扩散+反向去噪
+      │     │
+ 2020 │     └── ◉ Ho, Jonathan et al. ✓   ██████░ 5637
+      │         “Denoising Diffusion Probabilistic Models”
+      │           此前扩散思想的样本质量远不及 GAN，无人重视 ⇒ 用加权变分目标训练去噪扩散(DDPM)
+      │         │
+ 2020 │         ├── ○ Jiaming Song et al. ✓   ███░░░░  102
+      │         │   “Denoising Diffusion Implicit Models”
+      │         │     DDPM 采样需模拟上百步马尔可夫链，太慢 ⇒ 提出非马尔可夫的确定性采样(DDIM)
+      │         │
+ 2021 │         └── ○ Alex Nichol et al. ⚠   ████░░░  412
+      │             “Improved Denoising Diffusion Probabilistic Models”
+      │               原始 DDPM 的对数似然与采样效率欠佳 ⇒ 学习方差、改进噪声调度
+      │             │
+ 2021 │             └── ◉ Prafulla Dhariwal et al. ✓   ██████░ 2173
+      │                 “Diffusion Models Beat GANs on Image Synthesis”
+      │                   扩散仍未在基准上全面超过 GAN ⇒ 改进架构 + classifier guidance，确立 SOTA
+      │                   → builds-on: Ho, Jonathan et al.
+      │                 │
+ 2022 │                 ├── ○ Jonathan Ho et al. ✓   █████░░  742
+      │                 │   “Classifier-Free Diffusion Guidance”
+      │                 │     依赖额外分类器，复杂且易失真 ⇒ 用有/无条件模型之差实现免分类器引导(CFG)
+      │                 │   │
+ 2022 │                 │   └── ◉ Chitwan Saharia et al. ✓   ██████░ 2106
+      │                 │       “Photorealistic Text-to-Image Diffusion Models…(Imagen)”
+      │                 │         文生图语言理解不足 ⇒ 用冻结大语言模型(T5)做文本编码 + 级联扩散
+      │                 │         ∥ parallel: Aditya Ramesh et al.（实为 Imagen 引用 DALL·E2）
+      │                 │
+ 2022 │                 ├── ◉ Aditya Ramesh et al. ✓   ██████░ 2286
+      │                 │   “Hierarchical Text-Conditional Image Generation with CLIP Latents”
+      │                 │     如何把 CLIP 语义用于文生图 ⇒ 两阶段 unCLIP(DALL·E 2)
+      │                 │
+ 2022 │                 └── ◉ Robin Rombach et al. ✓   ███████ 13635
+      │                     “High-Resolution Image Synthesis with Latent Diffusion Models”
+      │                       像素空间扩散昂贵 ⇒ 压到潜空间再扩散(LDM)，催生 Stable Diffusion
+      │                     │
+ 2023 │                     ├── ★ William Peebles et al. ✓   █████░░ 1418
+      │                     │   “Scalable Diffusion Models with Transformers (DiT)”
+      │                     │     U-Net 扩展性受限 ⇒ Transformer 替换骨干，揭示 scaling 规律
+      │                     │   │
+ 2024 │                     │   ├── ★ Patrick Esser et al. ✓   ███░░░░   86
+      │                     │   │   “Scaling Rectified Flow Transformers…(SD3)”
+      │                     │   │     高分辨率/文本对齐瓶颈 ⇒ rectified flow + 多模态 DiT(MMDiT)
+      │                     │   │     → builds-on: Robin Rombach et al.
+      │                     │   │   │
+ 2025 │                     │   │   └── ★ Black Forest Labs et al. ⚠   █░░░░░░    4
+      │                     │   │       “FLUX.1 Kontext: Flow Matching for In-Context Editing”
+      │                     │   │         rectified flow 一脉 ⇒ 原生上下文图像生成与编辑
+      │                     │   │
+ 2024 │                     │   └── ★ Yi Jiang et al. ⚠   ███░░░░   38
+      │                     │       “Visual Autoregressive Modeling…(VAR)”
+      │                     │         自回归长期落后扩散 ⇒「下一尺度预测」由粗到细生成
+      │                     │         ∥ parallel: Patrick Esser et al.（同期范式之争）
+      │                     │       │
+ 2025 │                     │       └── ★ Xiaokang Chen et al. ⚠   ██░░░░░   10
+      │                     │           “Janus-Pro: Unified Multimodal…”
+      │                     │             理解与生成相互制约 ⇒ 解耦视觉编码 + 规模化
+      │                     │             ⇢ inspired-by: William Peebles et al.
+      │                     │
+ 2023 │                     └── ★ Lvmin Zhang et al. ✓   ██████░ 3589
+      │                         “Adding Conditional Control…(ControlNet)”
+      │                           难加空间条件 ⇒ 冻结原模型旁挂可训练副本，即插即用可控
+      │
+ 2019 │  ● Yang Song et al.   █████░░  986
+      │     “Generative Modeling by Estimating Gradients of the Data Distribution (NCSN)”
+      │       概率密度需难解归一化常数 ⇒ 用 score matching 估梯度 + Langevin 采样
+      │     │
+ 2020 │     └── ○ Yang Song et al. ✓   █████░░ 1274
+      │         “Score-Based Generative Modeling through SDEs”
+      │           两条线缺乏统一理论 ⇒ 用 SDE 统一 DDPM 与 score-based，给出概率流 ODE
+      │           ∥ parallel: Ho, Jonathan et al.（实为 Score-SDE 引用 DDPM）
+      │         │
+ 2022 │         └── ○ Tero Karras et al. ⚠   ████░░░  308
+      │             “Elucidating the Design Space of Diffusion-Based Generative Models (EDM)”
+      │               设计选择纠缠不清 ⇒ 解耦设计空间 + 更优采样器
 
-分数 / SDE 路线
- 2011 ● Vincent  score matching ↔ 去噪自编码器
- 2019   └─ ○ Song & Ermon — NCSN  ✓     用 score+Langevin 采样，分数生成开山
- 2020      └─ ○ Song et al. — Score-SDE ✓   SDE 统一 NCSN 与 DDPM（理论总纲）
-
-潜空间路线
- 2013 ● Kingma & Welling — VAE
- 2017   └─ ○ van den Oord — VQ-VAE ✓        离散 latent，潜扩散的编码器
-
-扩散主干
- 2015 ● Sohl-Dickstein  非平衡热力学：扩散框架奠基
- 2020   └─ ◉ Ho et al. — DDPM ✓  ← 引爆点（追平 GAN）  → builds-on: Vincent
-        ├─ ○ Song et al. — DDIM ✓                确定性快速采样（提速 10–50×）
-        │     └┄ 采样加速线 → DPM-Solver++ (2022) → Consistency Models (2023)
-        └─ ◉ Dhariwal & Nichol (2021) ✓   classifier guidance 全面超越 GAN
-              ⇒ supersedes: Brock — BigGAN (2018)
-              │
-              ├─ ★ Ho & Salimans — CFG (2022) ✓   classifier-free：文生图总开关
-              │     └─ ★ Saharia et al. — Imagen ✓   T5+级联扩散+CFG，照片级
-              ├─ ★ Rombach et al. — LDM / Stable Diffusion (2022) ✓
-              │     → builds-on: VQ-VAE + DDPM（两根汇合）
-              │     ├─ ★ Peebles & Xie — DiT (2023) ✓   Transformer 骨干 + scaling
-              │     │     ├─ ★ Esser et al. — SD3 (2024) ✓   rectified flow 新范式
-              │     │     └─ ★ Yi Jiang et al. — VAR (2024) ✓   自回归「下一分辨率」超越扩散
-              │     │           └┄ inspired-by → ★ Janus-Pro (2025) ⚠   统一多模态生成
-              │     └─ ★ Zhang et al. — ControlNet (2023) ✓   精确空间可控
-              │          ∥ parallel: DiT
-              └┄ inspired-by → ★ Ramesh et al. — DALL·E 2 (2022) ✓   unCLIP 路线
-
-● founder  ◉ hub  ★ frontier  ·  ├─ builds-on  └┄ inspired-by  ∥ parallel  ⇒ supersedes
-citations: ✓ 25 verified · ∥ 1 parallel · ⚠ 2 to review   (run verify.py)
+      ● founder  ◉ hub  ★ frontier  ·  ├── builds-on  ├┈┈ inspired-by  ∥ parallel
+      citations: ✓ 13 verified  ⚠ 8 to review   (run verify.py)
 ```
 
-> 节点角色：**●** 奠基 / **◉** 枢纽 / **★** 前沿；关系：`├─` builds-on、`└┄` inspired-by、`∥` parallel、`⇒` supersedes。每条 builds-on 边都经 `verify.py` 对照 OpenAlex/Semantic Scholar 的真实参考文献核验。完整渲染见 `render_tree.py examples/diffusion-models.json`。
+> **⚠ 关于引用数**：上图引用数取自 **OpenAlex 单条记录**。OpenAlex 会把同一篇论文的
+> 预印本与正式版拆成多条记录、分摊引用，因此对经典论文**严重低估**——例如 DDIM 实际被引
+> 数千次，这里只显示 102；VAR、EDM、Improved DDPM 同理。**请把引用数仅作量级参考**，谱系
+> 的价值在于「谁建立在谁之上」的关系，而非这些数字。
 
 ## 发展历程
 
-### 奠基（2011–2017）：三条根须各自生长
-扩散模型不是凭空出现，它的三条根须早在草创期就已埋下，彼此独立、日后汇流。
+### 奠基（2015–2020）：两条独立的线汇成一条河
 
-**分数根**：**Vincent (2011)** 证明了一个朴素却深远的等价——训练去噪自编码器，本质就是在**匹配数据分布的 score（对数密度梯度）**，且无需昂贵的二阶导数。八年后，**Song & Ermon (2019) 的 NCSN** 把这一点变成可用的生成器：用 score matching 估计梯度、用 Langevin 动力学采样，并以**多尺度噪声扰动**解决低密度区 score 不准的难题——分数生成模型的开山之作。
+扩散模型有**两个独立源头**，2020 年才合流。
 
-**潜空间根**：**Kingma & Welling (2013) 的 VAE** 用重参数化让带连续隐变量的模型可直接 SGD 训练；**van den Oord (2017) 的 VQ-VAE** 进一步给出**离散 latent**、避免后验坍塌，为日后"先把图像压进紧凑 latent、再在其上做扩散"提供了编码器。
+- **热力学线**：Sohl-Dickstein (2015) 借非平衡热力学提出——先用一条前向马尔可夫链把数据**逐步扩散成噪声**，再训练一个反向链一步步去噪。它解决的是生成模型长期的两难：要么表达力强但难采样/推断，要么可解析但太受限。但当时样本质量平平，几乎无人跟进。
+- **分数线**：与之**并行**，Song & Ermon (2019) 的 NCSN 走另一条路——绕开难解的归一化常数，直接用 score matching 估计数据分布的**梯度(score)**，再用 Langevin 动力学采样。
 
-**扩散根**：**Sohl-Dickstein et al. (2015)** 从非平衡热力学借来核心想法——**前向逐步加噪把结构"扩散"成纯噪声，再学反向逐步去噪还原**——首次给出既灵活又可精确处理的扩散式生成模型。但受限于训练目标与算力，它沉睡了整整五年。
+转折点是 **Ho (2020) 的 DDPM**：用一个加权变分目标重新训练去噪扩散，**首次让扩散在图像质量上比肩 GAN**，真正引爆了这个方向。紧接着 **Song (2020) 的 Score-SDE** 用随机微分方程把"热力学线"和"分数线"**统一**起来（离散步 = SDE 的离散化），并给出概率流 ODE——两条河至此汇为一条，理论框架成型。（二者同年、相隔数月：本谱系将其标为 `parallel`(并行)，但严格说 Score-SDE 引用了 DDPM，故 `verify.py` 标记为 ‼ 互引——这是一处可改判为 builds-on 的关系。）
 
-### 引爆与统一（2020）：DDPM 点火，Score-SDE 立纲
-**Ho et al. (2020) 的 DDPM** 是整条路线的引爆点：在 Sohl-Dickstein 框架（builds-on）之上、借 Vincent 的 score 视角（builds-on ✓），把训练目标简化成一个**加权去噪回归损失**——优雅、稳定、好训，**第一次让扩散在图像质量上追平 GAN**。沉睡的框架被唤醒，此后几乎所有分支都从 DDPM 这个枢纽（◉）长出。
+### 提速与提质（2020–2022）：让扩散真正可用
 
-同年，**Song et al. (2020) 的 Score-SDE** 立起**理论总纲**：用随机微分方程把离散步的 DDPM 与分数匹配 **统一**成连续时间过程（NCSN→Score-SDE，builds-on ✓），给出 reverse-time SDE、**概率流 ODE** 采样与精确似然——它既收束了分数根，又成为日后快速采样与少步生成的数学地基。
+DDPM 虽好，但有两个硬伤——**采样太慢**、**还没全面赢 GAN**。三项工作分别攻克：
 
-### 采样加速线（2020→2023）：从上千步到几步
-扩散好用但慢——DDPM 出一张图要模拟上千步。这条线专治"慢"：
-- **Song et al. (2020) 的 DDIM**：构造与 DDPM 共享训练目标的**非马尔可夫确定性采样**，可大幅跳步、提速 10–50×，并让 latent 可插值、采样可复现（builds-on DDPM ✓）。
-- **Lu et al. (2022) 的 DPM-Solver++**：把带引导采样建模成**高阶扩散 ODE 求解** + 多步稳定化，把高质量采样压到约 15–20 步（builds-on Score-SDE ✓；builds-on DDIM 为真实引用，但其 2025 期刊重印记录在 OpenAlex 参考文献缺失，故标 ⚠，见下）。
-- **Song et al. (2023) 的 Consistency Models**：学习把概率流 ODE 轨迹上**任意点直接映射回起点**，支持**一步/少步生成**且可独立训练（builds-on Score-SDE ✓）——把"加速"推到新范式。
+- **采样加速**：Song (2020) 的 **DDIM** 提出非马尔可夫的确定性采样，在保质量前提下把上百步压到几十步。
+- **质量/似然**：Nichol (2021) 的 **Improved DDPM** 用学习方差、改噪声调度等简单改动兼顾样本质量与似然；**Dhariwal (2021) 的 "Beat GANs"** 则改进架构 + 引入 classifier guidance，在多项基准**正式超越 BigGAN**，确立扩散为新 SOTA。
+- **引导方式**：Ho (2022) 的 **Classifier-Free Guidance (CFG)** 去掉了额外分类器的依赖，用有/无条件模型之差实现引导——这成为后续所有文生图模型**可控生成的标准开关**。
 
-### 引导线（2021→2022）：CFG 成为文生图总开关
-- **Dhariwal & Nichol (2021)**：通过架构消融 + **classifier guidance**（用分类器梯度在保真↔多样间权衡），首次让扩散在 ImageNet 上 FID **全面超越 BigGAN**——树上一条 `⇒ supersedes` 指向 **Brock et al. (2018, BigGAN)**，这正是扩散要跨过的 GAN 标杆（经核验是 Dhariwal 的真实引用 ✓）。
-- **Ho & Salimans (2022) 的 Classifier-Free Guidance**：联合训练有/无条件模型、用二者之差放大条件信号，**无需任何分类器**即可调节保真↔多样（builds-on Dhariwal ✓）。CFG 看似小技巧，却成为**此后几乎所有文生图模型的标准开关**——下一段三雄无一例外。
+### 文生图爆发（2022）：三强并立
 
-### 潜空间文生图三雄（2022）：把扩散交到大众手里
-2022 年，三个几乎同期、互相独立的工作把文生图推向爆发：
-- **Rombach et al. (LDM / Stable Diffusion)**：把扩散搬进**预训练自编码器的潜空间**、用 cross-attention 注入文本条件，大幅降本提分辨率。这里**两根汇合**——它同时 builds-on DDPM（✓）与潜空间根的 VQ-VAE（✓）；开源的 SD 让文生图走向大众。
-- **Saharia et al. (Imagen)**：用**大型冻结文本编码器 (T5) + 级联像素扩散 + CFG**，达到空前的照片级真实感与文本对齐（builds-on CFG / DDPM ✓），印证"大语言模型理解 + 扩散生成"的威力。
-- **Ramesh et al. (DALL·E 2)**：走 **unCLIP** 两阶段路线（文本→CLIP 图像 embedding→扩散解码），多样性强、支持零样本编辑；它在概念上受引导式扩散启发（`└┄ inspired-by` Dhariwal ✓）。
+2022 年扩散从研究走向产品，三个标志性文生图系统几乎同时出现，构成本谱系最热闹的一层：
 
-> 这三者同期、互不隶属，彼此只有少量"相关工作"引用——本质是**并行**的三种文生图解法。
+- **Rombach 的 LDM / Stable Diffusion**（引用 13635，全树最高）：先用自编码器把图像压到**潜空间**再扩散，大幅降算力、可跑高分辨率，并支持跨模态条件——开源后成为整个生态的地基。
+- **Ramesh 的 DALL·E 2 / unCLIP**：两阶段——先由文本生成 CLIP 图像隐变量，再用扩散解码。
+- **Saharia 的 Imagen**：直接用大型**冻结语言模型 (T5)** 做文本编码 + 级联扩散，主打语言理解深度。
 
-### 近两年前沿（2023–2024）：骨干、可控、新范式
-- **架构骨干 → Peebles & Xie (2023, DiT)**：用 **Transformer 替换 U-Net** 在 latent patch 上做扩散，给出"算力越大、FID 越低"的清晰 **scaling 律**（builds-on LDM ✓），直接成为 SD3、Sora 的骨干选择。
-- **精确可控 → Zhang et al. (2023, ControlNet)**：冻结 SD、旁路可训练副本注入边缘/姿态/深度等空间条件，让生成"指哪打哪"（builds-on LDM ✓）。DiT 与 ControlNet 同期独立、互不引用，是一对 **∥ parallel**（架构 vs 可控两条正交努力）。
-- **新范式 → Esser et al. (2024, SD3 / Rectified Flow)**：用 **rectified flow（直线化的 flow matching）** 替代扩散的随机加噪路径、配**多模态 MM-DiT** 骨干（builds-on DiT / LDM ✓）——代表 2024 起"flow matching 取代/统一扩散"的新方向。
-- **自回归回潮 → Yi Jiang et al. (2024, VAR)**：把图像自回归重定义为**"由粗到细的 next-scale（下一分辨率）预测"**，而非 raster-scan 逐 token——首次让**自回归模型在 ImageNet 上反超扩散**，并展现 GPT 式 scaling 律（builds-on VQ-VAE 的离散 tokenizer + DiT ✓，并把 SD3 当作要超越的扩散基线）。这把"扩散 vs 自回归"重新摆上桌面。
-- **统一多模态生成 → Janus-Pro (2025)**：沿 VAR 开的自回归路线（`└┄ inspired-by`），用**解耦视觉编码 + 自回归框架**把"看图(理解)"与"画图(生成)"统一进单一多模态模型并做规模扩展——指向 2025 的"统一多模态生成"前沿。
+DALL·E 2 (4月) 与 Imagen (5月) 是同期竞争工作，本谱系标 `parallel`；严格说 Imagen 引用了 DALL·E 2（`verify.py` 同样标 ‼ 互引）。这一层都站在 Dhariwal 的"Beat GANs"与 CFG 的肩膀上。
 
-> **关于"2026 最新"**：截至 2026-06，OpenAlex / Semantic Scholar **尚未索引到有分量的 2026 图像生成里程碑**（新论文有数月至一年的索引与引用滞后，检索 2026 只返回零引用的离题结果）。本工具的底线是**只收录可检索、可核验的真实论文，绝不为"凑年份"杜撰**——因此谱系当前最新到 **2025（Janus-Pro）**。若你手上有具体的 2026 论文（标题 / arXiv id），告诉我，我可精确拉取并接入。
+### 架构革命（2023–2024）：U-Net 退场，Transformer 登台
 
-### 诚实性说明（核验全景）
-本谱系 28 条关系：**25 条 builds-on/supersedes/inspired-by 已核验为真实引用、1 条 parallel、仅 2 条 ⚠**。这一高核验率部分来自工具本轮升级的**重复记录 / 跨源和解**：
-- OpenAlex 常把同一篇论文存成多个 work-id，早期 BigGAN、Sohl-Dickstein、NCSN 等被引用的记录 id 与节点不一致 → `verify.py` 现按**归一化标题/DOI**自动和解，无需手工对齐即转 ✓；
-- VQ-VAE、Imagen、CFG、**VAR** 等论文的 OpenAlex 参考文献稀疏/缺失时，自动**回退 Semantic Scholar** 取参考文献核验（VAR 的 builds-on VQ-VAE / DiT 即由此确认）；
-- 两处遗留 **⚠**，都不是杜撰、而是**索引滞后**：**① DPM-Solver++ builds-on DDIM**——真实引用，但其 OpenAlex 记录是 2025 期刊**重印**版、参考文献缺失，S2 keyless 池又被限流；**② Janus-Pro(2025) 的 inspired-by 来源**——这篇很新的论文在 OpenAlex 与 S2 中**都还没有参考文献列表**，故其谱系关系标为 `inspired-by` 并**如实保留 ⚠**，未强行断言引用。这正是 research-genealogy 的底线：**箭头可信，靠的是数据而非记忆**；越靠近前沿，⚠ 越是诚实的"数据未到"而非"作者瞎编"。
+- **Peebles (2023) 的 DiT** 把扩散主干从 U-Net 换成 **Transformer**，揭示了可预测的 **scaling 规律**——这一步为后续所有大模型骨干铺路。
+- **Zhang (2023) 的 ControlNet** 解决"预训练大模型难加空间条件"的痛点：冻结原模型、旁挂可训练副本注入边缘/姿态，**即插即用的可控生成**。
+- **Esser (2024) 的 SD3** 把 rectified flow（直线化前向路径）与**多模态 DiT (MMDiT)** 结合并规模化，是 DiT 路线的集大成。
 
-（另注：OpenAlex 对 DDPM 摘要被无关仓库 README 污染、对 DDIM/Consistency/SD3 引用数因重复记录而低估——前者摘要已据引用它的论文据实改写，后者引用条仅作视觉参考，节点 id 与引用边均真实。）
+### 近两年前沿（2024–2025）：范式之争
 
-### 开放问题
-1. **少步生成的质量天花板**：Consistency / 蒸馏已把采样压到几步乃至一步，但少步下的多样性、细节与文本对齐能否追平多步，仍未解决。
-2. **三种范式之争（扩散 / flow matching / 自回归）**：SD3 的 rectified flow 用直线路径换效率，VAR 又让自回归"下一分辨率"反超扩散——扩散、flow matching、自回归三条路线谁主沉浮，或如何融合，是 2024 起最大的范式之争。
-3. **统一多模态生成**：Janus-Pro 等把"理解 + 生成"塞进单一自回归模型，但生成质量与专用扩散/文生图模型相比仍有差距，统一架构能否同时做到"看得懂"和"画得好"尚无定论。
-4. **可控性的统一接口**：ControlNet 之后条件适配器爆发，如何把空间/语义/风格/主体条件**统一、可组合**而非各做各的，尚无定论。
-5. **scaling 律向高维模态外推**：DiT 的 scaling 在图像上清晰，但视频 / 3D / 4D 等高维模态下的数据-算力-架构最优配比仍待验证。
-6. **理论回填**：Score-SDE 给了优雅的连续时间框架，但 guidance、潜空间压缩、rectified flow 等"工程加分项"尚未完全纳入统一理论。
+主线扩散稳固之后，前沿出现**三个新方向**（这一段的节点引用边多为 ⚠——参考文献尚未被 OpenAlex/S2 索引，已诚实标记）：
+
+- **Rectified flow 路线**：FLUX.1 Kontext (2025, Black Forest Labs) 沿 SD3 的 flow matching / rectified flow 一脉，主打**原生上下文图像生成与编辑**（FLUX.1[dev] 为开放权重，Kontext 旗舰版经 API 提供，并非完全开源）。
+- **自回归反扑**：Jiang (2024) 的 **VAR** 提出"下一尺度预测"的视觉自回归，由粗到细生成，**质量首次反超扩散**（与 SD3 是同期的范式之争，标 `parallel`）。
+- **统一多模态**：Chen (2025) 的 **Janus-Pro** 解耦视觉编码、扩大数据与模型规模，让单一模型同时增强多模态**理解与生成**——接续 VAR 的自回归思路，并受 DiT 启发。
+
+趋势很清晰：**扩散主线 → Transformer 骨干 → rectified flow 与自回归两条新范式分庭抗礼 → 走向理解-生成统一的大一统模型**。
+
+## 开放问题
+
+1. **采样效率 vs 质量**：尽管 DDIM/EDM 一路提速，少步（1–4 步）高质量生成仍是活跃战场，蒸馏/一致性模型与 rectified flow 各执一词。
+2. **范式未定**：扩散、rectified flow、视觉自回归（VAR/Janus-Pro）谁是终局尚无定论——VAR 在质量上反超，但生态与可控性仍以扩散为主。
+3. **可控与一致性**：ControlNet 之后，多条件、长程一致、可编辑性（FLUX Kontext 主打的方向）仍未被很好统一。
+4. **理解-生成统一的代价**：Janus-Pro 一类统一模型中，理解与生成任务相互制约，如何不靠复杂多阶段训练就两全，仍是开放问题。
+5. **评测**：FID 等指标与人类偏好脱节日益严重，前沿模型的真实差距难以可靠衡量。
 
 ## 论文清单
 
 | Year | Paper | Cites | Role | Citation |
 | ---: | --- | ---: | --- | :---: |
-| 2011 | [Pascal Vincent — A Connection Between Score Matching and Denoising Autoencoders](https://doi.org/10.1162/neco_a_00142) | 979 | founder | — |
-| 2013 | [Kingma, Welling — Auto-Encoding Variational Bayes (VAE)](http://arxiv.org/abs/1312.6114) | 15628 | founder | — |
-| 2015 | [Sohl-Dickstein et al. — Deep Unsupervised Learning using Nonequilibrium Thermodynamics](http://arxiv.org/abs/1503.03585) | 1417 | founder | — |
-| 2017 | [van den Oord et al. — Neural Discrete Representation Learning (VQ-VAE)](http://arxiv.org/abs/1711.00937) | 1969 | other | ✓ |
-| 2018 | [Brock et al. — Large Scale GAN Training (BigGAN)](http://arxiv.org/abs/1809.11096) | 1786 | founder | — |
-| 2019 | [Song, Ermon — Generative Modeling by Estimating Gradients of the Data Distribution (NCSN)](http://arxiv.org/abs/1907.05600) | 986 | other | ✓ |
-| 2020 | [Ho et al. — Denoising Diffusion Probabilistic Models (DDPM)](http://arxiv.org/abs/2006.11239) | 5637 | hub | ✓ |
-| 2020 | [J. Song et al. — Denoising Diffusion Implicit Models (DDIM)](http://arxiv.org/abs/2010.02502) | 102\* | other | ✓ |
-| 2020 | [Y. Song et al. — Score-Based Generative Modeling through SDEs (Score-SDE)](http://arxiv.org/abs/2011.13456) | 1274 | other | ✓ |
-| 2021 | [Dhariwal, Nichol — Diffusion Models Beat GANs on Image Synthesis](http://arxiv.org/abs/2105.05233) | 2173 | hub | ✓ |
-| 2022 | [Ho, Salimans — Classifier-Free Diffusion Guidance (CFG)](http://arxiv.org/abs/2207.12598) | 742 | frontier | ✓ |
-| 2022 | [Rombach et al. — Latent Diffusion Models (Stable Diffusion)](https://doi.org/10.1109/cvpr52688.2022.01042) | 13635 | frontier | ✓ |
-| 2022 | [Ramesh et al. — CLIP-Latent Text-to-Image (DALL·E 2)](http://arxiv.org/abs/2204.06125) | 2286 | frontier | ✓ (inspired-by) |
-| 2022 | [Saharia et al. — Photorealistic Text-to-Image with Deep Language Understanding (Imagen)](http://arxiv.org/abs/2205.11487) | 2106 | frontier | ✓ |
-| 2022 | [Lu et al. — DPM-Solver++: Fast Solver for Guided Sampling](https://doi.org/10.1007/s11633-025-1562-4) | 99\* | frontier | ⚠ |
-| 2023 | [Peebles, Xie — Scalable Diffusion Models with Transformers (DiT)](https://doi.org/10.1109/iccv51070.2023.00387) | 1418 | frontier | ✓ |
-| 2023 | [Zhang et al. — Adding Conditional Control to T2I Diffusion (ControlNet)](http://arxiv.org/abs/2302.05543) | 3589 | frontier | ✓ ∥ |
-| 2023 | [Y. Song et al. — Consistency Models](http://arxiv.org/abs/2303.01469) | 26\* | frontier | ✓ |
-| 2024 | [Esser et al. — Scaling Rectified Flow Transformers (SD3)](http://arxiv.org/abs/2403.03206) | 86\* | frontier | ✓ |
-| 2024 | [Jiang et al. — Visual Autoregressive Modeling: Next-Scale Prediction (VAR)](http://arxiv.org/abs/2404.02905) | 38\* | frontier | ✓ |
-| 2025 | [Chen et al. — Janus-Pro: Unified Multimodal Understanding and Generation](http://arxiv.org/abs/2501.17811) | 10\* | frontier | ⚠ |
-
-> \* DDIM / Consistency / SD3 / VAR / Janus-Pro / DPM-Solver++ 的引用数被 OpenAlex 因重复记录或索引滞后低估（真实影响远高于此）；此处只作视觉参考，节点身份与引用边均真实可核验。
+| 2015 | [Sohl‐Dickstein et al. — Deep Unsupervised Learning using Nonequilibrium Thermodynamics](http://arxiv.org/abs/1503.03585) | 1417 | founder | — |
+| 2019 | [Yang Song et al. — Generative Modeling by Estimating Gradients of the Data Distribution](http://arxiv.org/abs/1907.05600) | 986 | founder | — |
+| 2020 | [Ho et al. — Denoising Diffusion Probabilistic Models](http://arxiv.org/abs/2006.11239) | 5637 | hub | ✓ |
+| 2020 | [Yang Song et al. — Score-Based Generative Modeling through SDEs](http://arxiv.org/abs/2011.13456) | 1274 | other | ✓ |
+| 2020 | [Jiaming Song et al. — Denoising Diffusion Implicit Models](http://arxiv.org/abs/2010.02502) | 102 | other | ✓ |
+| 2021 | [Dhariwal et al. — Diffusion Models Beat GANs on Image Synthesis](http://arxiv.org/abs/2105.05233) | 2173 | hub | ✓ |
+| 2021 | [Nichol et al. — Improved Denoising Diffusion Probabilistic Models](http://arxiv.org/abs/2102.09672) | 412 | other | ⚠ |
+| 2022 | [Ho et al. — Classifier-Free Diffusion Guidance](http://arxiv.org/abs/2207.12598) | 742 | other | ✓ |
+| 2022 | [Karras et al. — Elucidating the Design Space of Diffusion-Based Generative Models](http://arxiv.org/abs/2206.00364) | 308 | other | ⚠ |
+| 2022 | [Ramesh et al. — Hierarchical Text-Conditional Image Generation with CLIP Latents](http://arxiv.org/abs/2204.06125) | 2286 | hub | ✓ |
+| 2022 | [Rombach et al. — High-Resolution Image Synthesis with Latent Diffusion Models](https://doi.org/10.1109/cvpr52688.2022.01042) | 13635 | hub | ✓ |
+| 2022 | [Saharia et al. — Photorealistic Text-to-Image Diffusion Models (Imagen)](http://arxiv.org/abs/2205.11487) | 2106 | hub | ✓ |
+| 2023 | [Peebles et al. — Scalable Diffusion Models with Transformers (DiT)](https://doi.org/10.1109/iccv51070.2023.00387) | 1418 | frontier | ✓ |
+| 2023 | [Zhang et al. — Adding Conditional Control to Text-to-Image Diffusion Models (ControlNet)](https://doi.org/10.1109/iccv51070.2023.00355) | 3589 | frontier | ✓ |
+| 2024 | [Esser et al. — Scaling Rectified Flow Transformers for High-Resolution Image Synthesis (SD3)](http://arxiv.org/abs/2403.03206) | 86 | frontier | ✓ |
+| 2024 | [Jiang et al. — Visual Autoregressive Modeling: Next-Scale Prediction (VAR)](https://doi.org/10.52202/079017-2694) | 38 | frontier | ⚠ |
+| 2025 | [Black Forest Labs — FLUX.1 Kontext: Flow Matching for In-Context Image Generation and Editing](https://openalex.org/W4414682104) | 4 | frontier | ⚠ |
+| 2025 | [Chen et al. — Janus-Pro: Unified Multimodal Understanding and Generation](https://openalex.org/W4406975803) | 10 | frontier | ⚠ |
 
 ---
-
-*本报告由 [research-genealogy](https://github.com/unumbrela/research-genealogy) skill 生成：草稿管线（多遍检索 + 引用雪球 + 领域内打分 + 传递归约）产出于 OpenAlex 真实元数据，经人工精炼（补入 NCSN / DDIM / CFG / Consistency / Imagen / SD3 / VAR / Janus-Pro、按真实摘要改写、关系重标）并以 `verify.py`（重复记录 / Semantic Scholar 跨源和解）对照真实引用核验。数据快照：2026-06。*
+*所有节点元数据取自 OpenAlex（2026-06）；Claude 用知识 + WebSearch 点名候选，再经脚本逐个解析为真实记录（"Qwen-Image Technical Report" 未解析到，已弃用而非编造）。引用边经 `verify.py` 校验，⚠ 表示 OpenAlex/S2 参考文献数据缺口（多为 2024–25 新论文），未强行声称。VAR / FLUX / Janus-Pro 的摘要尚未被索引，其问题/贡献据真实标题语义概括并已标注。*
