@@ -30,6 +30,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 
 
 # ------------------------------------------------------------- disk cache -----
@@ -304,6 +305,90 @@ def oa_expand(pid, limit, with_abstract=False):
     return {"paper": me, "references": refs, "citations": cites}
 
 
+# ------------------------------------------------------------------- arXiv ----
+# arXiv has the newest preprints (often months before OpenAlex indexes them),
+# but NO citation graph. So its hits enrich frontier *recall* only: the caller
+# back-resolves each to OpenAlex (by title) to recover real references, and the
+# genuinely-new ones stay as ref-less candidates — never trunk nodes.
+AX = "http://export.arxiv.org/api/query"
+_ATOM = "{http://www.w3.org/2005/Atom}"
+
+
+def _ax_entry(e):
+    def txt(tag):
+        el = e.find(_ATOM + tag)
+        return re.sub(r"\s+", " ", (el.text or "").strip()) \
+            if el is not None and el.text else ""
+
+    aid = txt("id")                          # http://arxiv.org/abs/2403.12345v1
+    m = re.search(r"abs/([0-9]+\.[0-9]+)", aid)
+    arxiv = m.group(1) if m else None
+    pub = txt("published")                   # 2024-03-15T17:00:00Z
+    year = int(pub[:4]) if pub[:4].isdigit() else None
+    names = [(a.find(_ATOM + "name").text or "").strip()
+             for a in e.findall(_ATOM + "author")
+             if a.find(_ATOM + "name") is not None]
+    return {
+        "id": f"arXiv:{arxiv}" if arxiv else (aid or None),
+        "title": txt("title"), "authors": _authors_label(names), "year": year,
+        "venue": "arXiv", "citations": None, "arxiv": arxiv, "doi": None,
+        "url": aid or None,
+        "referenced_works": [],              # arXiv exposes no reference list
+        "abstract": txt("summary"),
+    }
+
+
+def ax_search(query, limit, from_year=None, to_year=None):
+    """Search arXiv (newest first); return papers shaped like `_oa_slim` output
+    but with no citations/references. Year-filters client-side (the API's date
+    syntax is brittle). Degrades to [] on any failure — arXiv is a recall bonus,
+    never load-bearing."""
+    # AND the salient terms instead of a loose `all:<phrase>`: a date-sorted
+    # `all:` match returns the newest paper containing ANY term (mostly noise),
+    # while AND keeps it on-topic. Cap at 6 terms so it doesn't over-constrain.
+    terms = [w for w in re.findall(r"[a-zA-Z][a-zA-Z0-9]{2,}", query)][:6]
+    search = " AND ".join(f"all:{w}" for w in terms) or f"all:{query}"
+    params = urllib.parse.urlencode({
+        "search_query": search, "start": 0,
+        "max_results": max(limit * 3, 20),   # over-fetch, then filter by year
+        "sortBy": "submittedDate", "sortOrder": "descending"})
+    url = f"{AX}?{params}"
+    results = _cache_get(url)
+    if results is None:
+        raw = None
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(urllib.request.Request(
+                    url, headers={"User-Agent": "research-genealogy-skill"}),
+                        timeout=30) as resp:
+                    raw = resp.read().decode("utf-8")
+                break
+            except (urllib.error.URLError, ConnectionError, TimeoutError,
+                    http.client.HTTPException):
+                if attempt == 2:
+                    return []
+                time.sleep(2 ** attempt)
+        if not raw:
+            return []
+        try:
+            root = ET.fromstring(raw)
+        except ET.ParseError:
+            return []
+        results = [_ax_entry(e) for e in root.iter(_ATOM + "entry")]
+        _cache_put(url, results)
+    out = []
+    for p in results:
+        if not (p and p.get("id") and p.get("year") and p.get("title")):
+            continue
+        if (from_year and p["year"] < from_year) or \
+                (to_year and p["year"] > to_year):
+            continue
+        out.append(dict(p))                  # copy: callers annotate freely
+        if len(out) >= limit:
+            break
+    return out
+
+
 # ----------------------------------------------------------- Semantic Scholar -
 S2 = "https://api.semanticscholar.org/graph/v1"
 S2_FIELDS = "title,year,authors,citationCount,venue,externalIds,url"
@@ -436,6 +521,8 @@ def cmd_search(args):
     if args.source == "openalex":
         papers = oa_search(args.query, args.limit, args.from_year,
                            args.to_year, args.sort, args.precise, args.abstract)
+    elif args.source == "arxiv":
+        papers = ax_search(args.query, args.limit, args.from_year, args.to_year)
     else:
         papers = s2_search(args.query, args.limit, args.from_year,
                            args.to_year, args.sort, args.abstract)
@@ -472,7 +559,8 @@ def cmd_expand(args):
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--source", choices=["openalex", "s2"], default="openalex")
+    ap.add_argument("--source", choices=["openalex", "s2", "arxiv"],
+                    default="openalex")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("search")

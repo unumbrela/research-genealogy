@@ -85,12 +85,15 @@ def build_graph(data, nodes):
     incoming = {nid: [] for nid in nodes}
     extra = []
     edge_status = {}
+    edge_hint = set()                    # edges whose relation is an auto guess
     for e in data.get("edges", []):
         f, t, rel = e["from"], e["to"], e.get("relation", "builds-on")
         if f not in nodes or t not in nodes:
             continue
         if e.get("verified"):
             edge_status[(f, t)] = e["verified"]
+        if e.get("_label_hint"):
+            edge_hint.add((f, t))
         (incoming[t].append((f, rel)) if rel in LINEAGE_RELS
          else extra.append((f, t, rel)))
 
@@ -115,7 +118,7 @@ def build_graph(data, nodes):
         annotations[t].append((f, rel))
     for kids in children.values():
         kids.sort(key=lambda nid: (nodes[nid].get("year") or 9999))
-    return children, primary, primary_rel, annotations, edge_status
+    return children, primary, primary_rel, annotations, edge_status, edge_hint
 
 
 def roles(nodes, primary):
@@ -153,7 +156,7 @@ def cite_bar(c, cmax, width=7):
 
 # ---- render ------------------------------------------------------------------
 def render(data, nodes, term_w):
-    children, primary, primary_rel, annotations, edge_status = \
+    children, primary, primary_rel, annotations, edge_status, edge_hint = \
         build_graph(data, nodes)
     role, max_year = roles(nodes, primary)
     has_verify = bool(edge_status)
@@ -176,7 +179,9 @@ def render(data, nodes, term_w):
     bar = "─" * inner
     legend = (f"{C('●',GREEN)} founder  {C('◉',CYAN)} hub  "
               f"{C('★',YELLOW)} frontier  ·  ├── builds-on  ├┈┈ inspired-by  "
-              f"{C('∥',MAGENTA)} parallel")
+              f"{C('∥',MAGENTA)} parallel"
+              + (f"  ·  {C('?',YELLOW)} auto-labelled, confirm in refine"
+                 if edge_hint else ""))
     meta = f"{len(nodes)} papers  ·  {span}"
     out.append(f"{'':>{GUT}} ╭{bar}╮")
     out.append(f"{'':>{GUT}} │ " + C(title, BOLD) + " " * (inner - 1 - dw(title)) + "│")
@@ -205,6 +210,8 @@ def render(data, nodes, term_w):
             sym, col = VERIFY_MARK.get(st, ("", ""))
             if sym:
                 vmark = " " + (C(sym, col) if col else sym)
+        if nid in primary and (primary[nid], nid) in edge_hint:
+            vmark += " " + C("?", YELLOW)      # auto-labelled relation — confirm
         head = f"{prefix}{conn} {marker} {author}{tag}{vmark}   {bar} {cites}"
         line(n.get("year") or "", head)
 
@@ -220,7 +227,8 @@ def render(data, nodes, term_w):
         for pid, arel in annotations.get(nid, []):
             who = nodes.get(pid, {}).get("authors", pid)
             g = REL_GLYPH.get(arel, "·")
-            line("", cont + "  " + C(f"{g} {arel}: {who}", MAGENTA, DIM))
+            q = C(" ?", YELLOW) if (pid, nid) in edge_hint else ""
+            line("", cont + "  " + C(f"{g} {arel}: {who}", MAGENTA, DIM) + q)
 
         if nid in visited:
             if children.get(nid):
@@ -269,7 +277,7 @@ MM_EDGE = {"builds-on": "-->", "inspired-by": "-.->",
 
 
 def render_mermaid(data, nodes):
-    children, primary, primary_rel, annotations, _ = build_graph(data, nodes)
+    children, primary, primary_rel, annotations, _, _ = build_graph(data, nodes)
     role, _ = roles(nodes, primary)
     out = ["```mermaid", "graph TD",
            "  classDef founder fill:#dcfce7,stroke:#16a34a,color:#000;",
@@ -292,7 +300,7 @@ def render_mermaid(data, nodes):
 def render_markdown(data, nodes):
     global _USE_COLOR
     _USE_COLOR = False
-    children, primary, primary_rel, annotations, edge_status = \
+    children, primary, primary_rel, annotations, edge_status, _ = \
         build_graph(data, nodes)
     role, _ = roles(nodes, primary)
     ys = [n.get("year") for n in nodes.values() if n.get("year")]
@@ -376,7 +384,7 @@ def _short_title(t):
 
 
 def render_drawio(data, nodes):
-    children, primary, primary_rel, annotations, edge_status = \
+    children, primary, primary_rel, annotations, edge_status, _ = \
         build_graph(data, nodes)
     role, _ = roles(nodes, primary)
 

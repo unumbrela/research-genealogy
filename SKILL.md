@@ -55,6 +55,16 @@ derive:
    branches. Include one phrasing aimed at the *newest* wave (the LLM/
    foundation-model angle exists in almost every field since 2023).
 
+Not sure how a field is phrased in the literature? Mine candidates first:
+
+```
+python3 scripts/genealogy.py "<your best primary phrasing>" --suggest-aliases
+```
+
+It runs one seed search and prints the most frequent title phrases (real
+sub-topic names) as ready-to-paste `--alias` lines — pick the ones that name a
+genuine branch.
+
 The final `field` label shown to the user stays in *their* language — edit it
 in the JSON afterwards.
 
@@ -75,7 +85,12 @@ re-run with better phrasings beats an hour of manual repair.
 What the command does (so you know what you can trust):
 
 1. multi-pass keyword search (broad + precise + frontier);
-2. **snowball expansion** — pulls references + citing works of the field's core
+2. **arXiv frontier pass** — searches arXiv for the newest preprints (OpenAlex
+   often lags months behind), back-resolves each to OpenAlex by title to recover
+   real references; genuinely-unindexed ones are surfaced in
+   `_frontier_candidates` (marked `source: arXiv …`) for you to verify and wire
+   in by hand — they are never auto-added as trunk nodes;
+3. **snowball expansion** — pulls references + citing works of the field's core
    papers, so landmarks the keywords missed still enter the pool;
 3. relevance gating anchored on the *core* (the largest mutually-citing cluster
    of precise matches) — off-topic keyword twins and generic mega-cited
@@ -117,7 +132,11 @@ Work through ALL of these, editing `lineage.json` directly:
    abstract's first sentence. `problem` = what was broken/missing before this
    paper; `contribution` = what it introduced. Delete the `_abstract` keys when
    done (keeps the file clean).
-4. **Relabel relations.** The draft marks everything `builds-on`. Use:
+4. **Confirm / fix relation labels.** Edges are `builds-on` by default, but the
+   draft already *guesses* some `inspired-by` / `supersedes` labels with a
+   heuristic and flags each with `"_label_hint": "auto"` (rendered as a yellow
+   `?`). **Confirm or correct each hinted edge from the abstracts** — they are
+   guesses, not facts — and add the ones the heuristic missed:
    - `inspired-by` — conceptual influence rather than direct extension. Typical
      case: a *generation* milestone (e.g. DALL·E 2, Stable Diffusion) that
      triggered a detection/analysis wave — keep it as a root/context node but
@@ -126,6 +145,8 @@ Work through ALL of these, editing `lineage.json` directly:
      problem.
    - `parallel` — independent same-era attacks on the same problem (the draft
      detects some; add ones you can argue from the abstracts).
+
+   Delete the `_label_hint` key once you've confirmed (or fixed) an edge.
 5. **Name the branches.** Identify the 2–4 lines of attack the tree contains
    (e.g. 频域路线 / CLIP特征路线 / 重建误差路线) — you'll use these names in
    the narrative, and the tree should visibly hang each branch off its own
@@ -141,18 +162,29 @@ Work through ALL of these, editing `lineage.json` directly:
    python3 scripts/verify.py lineage.json --write
    ```
 
-### Quality bar — check before rendering
+### Quality bar — enforced by lint.py
 
-- No star topology: the deepest chain should be ≥ 3 edges; a founder with
-  6+ direct children means you should reroute children to their real,
-  *nearest* predecessors.
-- Every era is represented: founding work, the high-impact middle, AND ≥ 3
-  nodes from the last ~2 years covering distinct new directions. A genealogy
-  that stops 2–3 years ago is the #1 failure mode.
-- ≥ 2 branches are visible and nameable; at least one `parallel` or
-  `inspired-by` relation survives (a pure chain means you haven't found the
-  field's structure).
-- Zero orphans; every summary is grounded in its abstract.
+Run the gate before rendering — a non-zero exit means the genealogy is NOT done:
+
+```
+python3 scripts/lint.py lineage.json
+```
+
+It hard-checks exactly the rules below and fails on any unmet one:
+
+- **Step 2 finished**: no blank `problem`/`contribution`, no leftover
+  `_abstract` keys, draft scaffolding (`_stats` etc.) removed, summaries no
+  longer raw abstract seeds.
+- **No star topology**: the deepest chain is ≥ 3 edges and no node has 6+ direct
+  children (reroute children to their real, *nearest* predecessor).
+- **Reaches the present with a real frontier**: max year ≥ now−2 AND ≥ 3 nodes
+  from the last ~2 years (a genealogy that stops 2–3 years ago is the #1 failure
+  mode; a frontier that is all surveys warns).
+- **Structure is visible**: ≥ 1 non-`builds-on` relation survives
+  (`parallel`/`inspired-by`/`supersedes`) and the trunk branches; zero orphans.
+
+Fix what it flags and re-run until it passes. (Curated/frozen example files use
+`--curated` to relax the now-relative frontier check.)
 
 ## Step 3 — render
 
@@ -249,6 +281,13 @@ relevance|citations|recent`.
   parents/children automatically (including the duplicate-record case) before
   writing the draft; `--prune-orphans` drops any that truly can't be linked.
   You should see far fewer orphans to fix by hand.
+- **arXiv recall for the frontier.** Beyond OpenAlex/S2, a dedicated arXiv pass
+  pulls the very newest preprints (which OpenAlex can lag months behind) so the
+  "近两年前沿" section has fresh material. arXiv has no citation graph, so these
+  hits enrich *recall* only: each is back-resolved to OpenAlex by title to
+  recover real references, and any that are genuinely unindexed stay as
+  ref-less `_frontier_candidates` you wire in by hand — the "edges are real
+  citations" guarantee is never weakened.
 - **Tighter topic gate.** Application/review papers from an adjacent domain
   (e.g. diffusion-for-materials when the field is image generation) that merely
   cite the core are now filtered as domain drift, so the pool stays on-topic.

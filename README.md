@@ -190,7 +190,12 @@ The draft pipeline (all from real OpenAlex metadata):
 
 1. **multi-pass search** — broad + precise + frontier (recent work that
    citation-sort would bury);
-2. **citation snowball** — references + citing works of the field's core
+2. **arXiv frontier pass** — pulls the newest preprints (OpenAlex can lag months
+   behind, the usual reason a genealogy "stops 2–3 years ago"), back-resolving
+   each to OpenAlex by title to recover real references; truly-unindexed ones are
+   surfaced as `_frontier_candidates` to wire in by hand — never auto-added, so
+   the "edges are real citations" guarantee holds;
+3. **citation snowball** — references + citing works of the field's core
    papers, so landmarks the keywords missed still enter the pool;
 3. **relevance gate** — anchored on the largest mutually-citing cluster of
    precise matches; off-topic keyword twins and generic mega-cited backbones
@@ -206,13 +211,24 @@ The draft pipeline (all from real OpenAlex metadata):
 Every `builds-on` edge is a real citation by construction and arrives
 pre-marked `✓ verified`. The draft also ships `_frontier_candidates` /
 `_alternates` swap pools and per-phrasing diagnostics (`precise hits`, `core`
-size) so the refiner knows when to re-phrase. Claude then refines summaries,
-prunes/replaces nodes, relabels `inspired-by` / `supersedes` relations, and
-delivers a full report — genealogy tree + era-by-era narrative — saved as
-markdown (see `SKILL.md`; example: `examples/ai4reaction-genealogy.md`).
+size) so the refiner knows when to re-phrase. The draft also pre-labels some
+`inspired-by` / `supersedes` relations heuristically (flagged `?` for the refiner
+to confirm). Claude then refines summaries, prunes/replaces nodes, confirms the
+relations, and delivers a full report — genealogy tree + era-by-era narrative —
+saved as markdown (see `SKILL.md`; example: `examples/ai4reaction-genealogy.md`).
+
+Before rendering, a **quality gate** keeps half-finished genealogies from
+shipping:
+
+```bash
+python3 scripts/lint.py lineage.json     # fails on blank summaries, draft
+                                         # residue, star topology, a stale or
+                                         # thin frontier, orphans, missing branches
+```
 
 Flags: `--alias` (repeatable — synonyms / sub-branch phrasings merged into one
-pool), `--from-year/--to-year` scope the genealogy, `--no-expand` skips the
+pool), `--suggest-aliases` (mine candidate phrasings from a seed search before
+you commit), `--from-year/--to-year` scope the genealogy, `--no-expand` skips the
 snowball for a quick draft.
 
 ### Output formats

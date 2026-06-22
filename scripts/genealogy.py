@@ -72,6 +72,13 @@ def _terms(text):
             if w not in STOP]
 
 
+def _surface_terms(text):
+    """Like _terms but keeps the readable surface form (no stemming), for
+    composing human-readable alias phrasings."""
+    return [w for w in re.findall(r"[a-z][a-z0-9\-]+", (text or "").lower())
+            if w not in STOP and len(w) > 2]
+
+
 def _norm_title(t):
     return re.sub(r"[^a-z0-9]", "", (t or "").lower())
 
@@ -102,6 +109,53 @@ def _first_sentence(abstract, limit=90):
 
 def _node_terms(p):
     return set(_terms(f"{p.get('title') or ''} {p.get('abstract') or ''}"))
+
+
+# generative milestones that typically *inspire* a downstream analysis/detection
+# wave rather than being directly extended by it
+GEN_MILESTONE = re.compile(
+    r"\b(gan|generative adversarial|dall[\s·.-]?e|stable diffusion|imagen|"
+    r"midjourney|glide|vqgan|latent diffusion|text-to-image|"
+    r"diffusion model)\b", re.I)
+# explicit superiority language => the later work may *supersede* the earlier
+SUPERIOR = re.compile(
+    r"\b(outperform\w*|surpass\w*|state[- ]of[- ]the[- ]art|\bsota\b|"
+    r"superior to|substantially improv\w+|new best)\b", re.I)
+
+
+def _relabel(edges, ids, slug):
+    """Draft heuristic relation labels — builds-on → inspired-by / supersedes —
+    each flagged `_label_hint:"auto"` so Step 2 confirms rather than trusts.
+    Deliberately high-precision / low-recall: a wrong *builds-on* default is
+    cheaper than a wrong confident relabel."""
+    inv = {s: pid for pid, s in slug.items()}
+    terms = {pid: _node_terms(p) for pid, p in ids.items()}
+    # lineage in-degree per child: builds-on/inspired-by edges keep a node in the
+    # tree, supersedes does not — so we must never strip a node's last parent
+    lineage_in = Counter(e["to"] for e in edges
+                         if e.get("relation") in ("builds-on", "inspired-by"))
+    for e in edges:
+        if e.get("relation") != "builds-on":
+            continue
+        a, b = ids.get(inv.get(e["from"])), ids.get(inv.get(e["to"]))
+        if not a or not b:
+            continue
+        ta, tb = terms[a["id"]], terms[b["id"]]
+        jac = len(ta & tb) / max(1, len(ta | tb))
+        # inspired-by: a generative milestone feeding a different sub-problem
+        # (low topical overlap) — e.g. DALL·E 2 triggering a detection wave.
+        # Stays a lineage relation, so the node keeps its tree parent.
+        if jac < 0.10 and GEN_MILESTONE.search(a.get("title") or ""):
+            e["relation"], e["_label_hint"] = "inspired-by", "auto"
+            continue
+        # supersedes: same problem family (high overlap) + an explicit
+        # superiority claim in the later paper, year gap ≥ 1 — but only when the
+        # child has another lineage parent left, so the tree stays connected.
+        if (jac >= 0.18 and (b.get("year") or 0) - (a.get("year") or 0) >= 1
+                and lineage_in[e["to"]] >= 2
+                and SUPERIOR.search(b.get("abstract") or "")):
+            e["relation"], e["_label_hint"] = "supersedes", "auto"
+            lineage_in[e["to"]] -= 1
 
 
 def _is_survey(p):
@@ -171,6 +225,19 @@ def field_core(pool, qsets):
         comps.setdefault(find(i), []).append(p)
     biggest = max(comps.values(), key=len)
     return biggest if len(biggest) >= 3 else cand
+
+
+def _resolve_arxiv_to_oa(p):
+    """Find the OpenAlex twin of an arXiv hit by exact (normalized) title, so a
+    preprint the keyword passes missed still enters the citation graph with real
+    references. Returns an oa_slim dict (real W-id, refs, citations) or None."""
+    title = p.get("title") or ""
+    if not title:
+        return None
+    for h in papers.oa_search(title, 3, with_abstract=True):
+        if h and _norm_title(h.get("title")) == _norm_title(title):
+            return h
+    return None
 
 
 # ------------------------------------------------------------------ collect --
@@ -245,6 +312,33 @@ def collect(direction, aliases=(), from_year=None, to_year=None,
     print(f"      core: {len(core)} mutually-citing on-topic papers"
           + ("  ⚠ thin core — consider different phrasings"
              if len(core) < 5 else ""), file=sys.stderr)
+
+    # pass 1.5 — arXiv frontier: the newest preprints OpenAlex may not index yet
+    # (months of lag), the direct cause of genealogies that "stop 2–3 years
+    # ago". Back-resolve each hit to OpenAlex by title (recovers real refs +
+    # citations so it can join the trunk); only the genuinely-unindexed ones
+    # stay as ref-less candidates, surfaced to the refiner via _frontier_candidates.
+    ax_hits, seen_ax = [], set()
+    for q in queries:
+        for p in papers.ax_search(q, 8, from_year=max(NOW - 2, from_year or 0),
+                                  to_year=to_year):
+            ax = p.get("arxiv")
+            if ax and ax not in seen_ax and on_topic(p, qsets, vocab):
+                seen_ax.add(ax)
+                ax_hits.append(p)
+    n_ax_new = 0
+    for p in ax_hits[:14]:                # cap the per-hit back-resolution calls
+        oa = _resolve_arxiv_to_oa(p)
+        if oa:
+            add([oa], "ref")              # has an OpenAlex twin: joins the graph
+        else:
+            p["_no_refs"] = True
+            add([p], "arxiv")             # truly new: frontier candidate only
+            n_ax_new += 1
+    if ax_hits:
+        print(f"      arXiv: {len(ax_hits)} on-topic hits, {n_ax_new} new "
+              f"preprint(s) not yet in OpenAlex", file=sys.stderr)
+
     if not seeds or not expand_hubs:
         return _topic_gate(pool, core, qsets, vocab)
 
@@ -351,6 +445,9 @@ def _topic_gate(pool, core, qsets, vocab):
             continue                       # mega-cited generic dependency
         if p.get("_precise") and on_topic(p, qsets, vocab):
             kept.append(p)                 # API-confirmed every-term match
+            continue
+        if p.get("_via") == "arxiv" and on_topic(p, qsets, vocab):
+            kept.append(p)                 # new preprint: frontier candidate only
             continue
         if not on_topic(p, qsets, vocab):
             continue
@@ -544,17 +641,22 @@ def derive_edges(chosen, slug):
             a, b = b, a
         edges.append({"from": slug[a], "to": slug[b],
                       "relation": "parallel", "verified": "parallel"})
+    _relabel(edges, ids, slug)
     return edges
 
 
 def _cand_view(p):
     """Compact candidate entry for the draft's swap pools."""
-    return {"oa": p["id"], "title": p.get("title"),
-            "authors": p.get("authors"), "year": p.get("year"),
-            "venue": p.get("venue") or "", "citations": p.get("citations"),
-            "in_pool_cites": p.get("_in_cites", 0),
-            "cited_by_pool": p.get("_in_cited", 0),
-            "abstract": (p.get("abstract") or "")[:240]}
+    v = {"oa": p["id"], "title": p.get("title"),
+         "authors": p.get("authors"), "year": p.get("year"),
+         "venue": p.get("venue") or "", "citations": p.get("citations"),
+         "in_pool_cites": p.get("_in_cites", 0),
+         "cited_by_pool": p.get("_in_cited", 0),
+         "abstract": (p.get("abstract") or "")[:240]}
+    if p.get("_via") == "arxiv" or p.get("_no_refs"):
+        v["source"] = ("arXiv preprint not yet in OpenAlex — verify by title "
+                       "and wire its edges by hand before using as a node")
+    return v
 
 
 # -------------------------------------------------------------------- build --
@@ -597,12 +699,18 @@ def build(direction, chosen, pool=()):
     rest = sorted((p for p in pool if p["id"] not in chosen_ids
                    and p.get("year")),
                   key=lambda p: p.get("_score", 0), reverse=True)
-    frontier_cands = sorted((p for p in rest if p["year"] >= NOW - 2
-                             and (p.get("_in_cites", 0) >= 1
-                                  or p.get("_precise"))),
-                            key=lambda p: ((p.get("citations") or 0)
-                                           + 5 * p.get("_in_cites", 0)),
-                            reverse=True)[:10]
+    recent = [p for p in rest if p["year"] >= NOW - 2]
+    # OpenAlex-grounded frontier (has refs/citations), score-ranked …
+    oa_front = sorted((p for p in recent if p.get("_via") != "arxiv"
+                       and (p.get("_in_cites", 0) >= 1 or p.get("_precise"))),
+                      key=lambda p: ((p.get("citations") or 0)
+                                     + 5 * p.get("_in_cites", 0)),
+                      reverse=True)
+    # … plus reserved slots for brand-new arXiv preprints (0 citations, so they
+    # would always lose a score race — but they are exactly the freshest signal)
+    ax_front = sorted((p for p in recent if p.get("_via") == "arxiv"),
+                      key=lambda p: -(p.get("year") or 0))
+    frontier_cands = (oa_front[:7] + ax_front[:4])[:11]
     alternates = [p for p in rest if p not in frontier_cands][:8]
     return {"field": direction, "_stats": stats, "nodes": nodes,
             "edges": edges,
@@ -686,6 +794,30 @@ def link_orphans(data, chosen, prune=False):
     return added, pruned
 
 
+def suggest_aliases(direction, topn=8):
+    """Step 0 aid: one seed search over the primary phrasing, then surface the
+    field's most frequent title phrases as candidate alias sub-topics — so a
+    user who only knows a nickname for the field can pick real index phrasings."""
+    seeds = papers.oa_search(direction, 50, with_abstract=True)
+    if not seeds:
+        print("no seed papers — try a different (English) phrasing", file=sys.stderr)
+        return
+    bg, uni = Counter(), Counter()
+    for p in seeds:
+        ws = _surface_terms(p.get("title"))
+        uni.update(ws)
+        for i in range(len(ws) - 1):
+            bg[f"{ws[i]} {ws[i + 1]}"] += 1
+    print(f"# {len(seeds)} seed papers for “{direction}”")
+    print("# candidate alias phrasings (frequent sub-topic phrases — keep the "
+          "ones that name a real branch):")
+    for ph, c in bg.most_common(topn * 2):
+        if c >= 2 and ph not in direction.lower():
+            print(f'    --alias "{ph}"   # appears in {c} titles')
+    print("# frequent field terms (to compose your own phrasings):")
+    print("    " + ", ".join(w for w, _ in uni.most_common(16)))
+
+
 # --------------------------------------------------------------------- main --
 def main():
     ap = argparse.ArgumentParser(
@@ -706,8 +838,16 @@ def main():
     ap.add_argument("--prune-orphans", action="store_true",
                     help="drop orphan nodes that stay unlinked after the "
                          "automatic title-aware repair (default: keep & flag)")
+    ap.add_argument("--suggest-aliases", action="store_true",
+                    dest="suggest_aliases",
+                    help="Step 0 aid: print candidate alias phrasings mined from "
+                         "a seed search, then exit (no draft is written)")
     ap.add_argument("--render", action="store_true")
     args = ap.parse_args()
+
+    if args.suggest_aliases:
+        suggest_aliases(args.direction)
+        return
 
     label = " / ".join([args.direction] + args.alias) if args.alias \
         else args.direction
@@ -725,6 +865,12 @@ def main():
 
     print(f"[3/4] selecting {args.nodes} load-bearing nodes …", file=sys.stderr)
     chosen = select(pool, args.nodes)
+    cyrs = [p["year"] for p in chosen if p.get("year")]
+    if cyrs:
+        recent = sum(1 for y in cyrs if y >= NOW - 2)
+        print(f"      span {min(cyrs)}–{max(cyrs)}, {recent} node(s) in the "
+              f"last 2y" + ("  ⚠ thin frontier — shop _frontier_candidates"
+                            if recent < 3 else ""), file=sys.stderr)
 
     print("[4/4] deriving citation edges (transitive reduction) …",
           file=sys.stderr)

@@ -71,6 +71,20 @@ def _show(items):
     return "" if not items else ": " + ", ".join(items)
 
 
+def quality_gate(path, c):
+    """Run the lint.py quality gate (curated mode) so the examples stay valid
+    deliverables, and so refactors to the gate can't silently regress them."""
+    name = os.path.basename(path)
+    sys.path.insert(0, THIS)
+    import importlib
+    lint = importlib.import_module("lint")
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    print(f"\n[{name}] quality gate")
+    g = lint.lint(data, curated=True)
+    c.ok(not g.errors, f"lint passes (curated){_show(g.errors)}")
+
+
 def verify_ratio(path, c):
     """Re-verify a curated example against live OpenAlex/S2 and assert the
     verified ratio doesn't regress and nothing is reversed."""
@@ -131,6 +145,8 @@ def main():
     c = Check()
     for path in sorted(glob.glob(os.path.join(ROOT, "examples", "*.json"))):
         structural(path, c)
+        if os.path.basename(path) not in SYNTHETIC:
+            quality_gate(path, c)
 
     if args.online:
         for path in sorted(glob.glob(os.path.join(ROOT, "examples", "*.json"))):
