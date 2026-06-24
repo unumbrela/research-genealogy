@@ -176,8 +176,19 @@ Work through ALL of these, editing `lineage.json` directly:
    abstract's first sentence. `problem` = what was broken/missing before this
    paper; `contribution` = what it introduced. Delete the `_abstract` keys when
    done (keeps the file clean).
-4. **Confirm / fix relation labels.** Edges are `builds-on` by default, but the
-   draft already *guesses* some `inspired-by` / `supersedes` labels with a
+4. **Confirm / fix relation labels.** First let the *data* settle what it can —
+   run `verify.py --fix` to auto-correct the edges real citations decide:
+   ```
+   python3 scripts/verify.py lineage.json --fix
+   ```
+   It swaps backwards `builds-on` arrows (↺ reversed) and converts any
+   `parallel` edge that is really a citation (‼ cross-cite) into a directed
+   `builds-on` — reconciled across duplicate OpenAlex records, so you don't
+   hand-resolve these or apologize for them in the narrative. Honest `⚠`
+   gaps and true `parallel` pairs are left untouched.
+
+   Then handle what the data can't: edges are `builds-on` by default, but the
+   draft also *guesses* some `inspired-by` / `supersedes` labels with a
    heuristic and flags each with `"_label_hint": "auto"` (rendered as a yellow
    `?`). **Confirm or correct each hinted edge from the abstracts** — they are
    guesses, not facts — and add the ones the heuristic missed:
@@ -243,10 +254,7 @@ Prints a colored view with a left year-axis, role markers
 
 Other output formats via `--format`:
 ```
-python3 scripts/render_tree.py lineage.json --format mermaid    # GitHub-renderable graph
 python3 scripts/render_tree.py lineage.json --format markdown   # report: tree + table + edges
-python3 scripts/render_tree.py lineage.json --format bibtex     # cite every node
-python3 scripts/render_tree.py lineage.json --format drawio     # editable draw.io diagram
 python3 scripts/render_tree.py lineage.json --format figure-prompt  # image-model prompt
 ```
 
@@ -272,6 +280,10 @@ tree in the conversation. Everything in the user's language. Template:
 ## 全景谱系树
 <render_tree.py --no-color output, in a code block>
 
+> 引用数取自 OpenAlex 单条记录，会因预印本/正式版被拆分而**低估**（经典论文
+> 尤甚），仅作量级参考；谱系的价值在「谁建立在谁之上」的关系，不在这些数字。
+> （只此一行说明，不要在正文里反复解释。）
+
 ## 发展历程
 
 ### 奠基（<years>）：<这一段在解决什么>
@@ -279,10 +291,11 @@ tree in the conversation. Everything in the user's language. Template:
 
 ### <路线A名称>（<years>）
 <这条路线为什么从主干分出来（前一代方法做不到什么）→ 代表工作依次
-解决了什么 → 它后来被什么取代/吸收>
+解决了什么 → 它后来被什么取代/吸收 → **明确点出它与相邻路线的 parallel/
+supersedes 关系**（这条边就是故事，不能省）>
 
 ### <路线B名称>（<years>）
-<同上；路线之间的 parallel/对比关系要点明>
+<同上；路线之间的 parallel/对比关系必须点明>
 
 ### 转折：<外部冲击是什么>（<year>）
 <指向 inspired-by 节点：什么事件改写了问题本身，领域如何转向>
@@ -303,8 +316,19 @@ Hard rules for the narrative:
   "作者 (年份)"; never introduce a paper that is not a node in the tree.
 - Explain **causality, not chronology**: "B 在 A 的基础上解决了 X" beats
   "然后 B 出现了". The builds-on/inspired-by edges ARE the story.
+- **Each route states its relationship to the neighboring route(s)** in one
+  sentence — `parallel`（同期之争）/ `supersedes`（取代）/ 分叉自哪个祖先.
+  The edges are the genealogy's point; a route described in isolation wastes them.
 - The 近两年前沿 section is mandatory and must name concrete new directions —
   a genealogy that stops 2–3 years ago is the #1 failure mode.
+
+**Final gate before delivery** — run the report linter; it mechanically checks
+that every node is actually discussed, the required sections exist, and the tree
+block survived (a non-zero exit means the report is NOT done):
+
+```
+python3 scripts/lint.py lineage.json --report <field-slug>-genealogy.md
+```
 
 **Optional — a publication figure.** If the user wants a diagram, generate the
 prompt with `render_tree.py lineage.json --format figure-prompt`, rename its
@@ -312,12 +336,14 @@ prompt with `render_tree.py lineage.json --format figure-prompt`, rename its
 (prose body **and** structure checklist) to an image model. See
 [`examples/diffusion-models-figure-prompt.md`](examples/diffusion-models-figure-prompt.md).
 To render the image automatically, pipe it through an OpenAI-compatible image
-relay with `scripts/gen_figure.py` (key/setup in
+relay (中转站) running `gpt-image-2` with `scripts/gen_figure.py` — default relay
+is ZenMux, `--relay wegoo` for the alternate (key/setup in
 [`image-relay.md`](image-relay.md)):
 
 ```
-python3 scripts/gen_figure.py lineage.json --out figure.png            # data → prompt → image
+python3 scripts/gen_figure.py lineage.json --out figure.png            # data → prompt → image (ZenMux)
 python3 scripts/gen_figure.py <renamed-prompt>.md --out figure.png     # from a refined prompt
+python3 scripts/gen_figure.py lineage.json --relay wegoo --out figure.png  # alternate relay
 ```
 
 ## Manual search passes (when the draft missed something)

@@ -665,6 +665,21 @@ def _augment_refs_via_s2(chosen):
               f"OpenAlex was missing", file=sys.stderr)
 
 
+def _cites_via_s2(citing, cited):
+    """Does `citing` reference `cited`, reconciled across duplicate records?
+    Matches `cited` by normalized title / DOI / arXiv against `citing`'s
+    Semantic Scholar reference keys (cached). Real citations only."""
+    titles, exts = papers.s2_reference_keys(citing)
+    if titles and _norm_title(cited.get("title")) in titles:
+        return True
+    e = set()
+    if cited.get("doi"):
+        e.add(str(cited["doi"]).lower())
+    if cited.get("arxiv"):
+        e.add(str(cited["arxiv"]).lower())
+    return bool(e & exts)
+
+
 def derive_edges(chosen, slug):
     """Citation-derived lineage: transitive reduction + nearest-predecessor
     parents + parallel-pair detection. Returns ready-to-render edge dicts."""
@@ -738,8 +753,20 @@ def derive_edges(chosen, slug):
     for _, a, b in pairs[:3]:
         if (ids[b].get("year") or 0) < (ids[a].get("year") or 0):
             a, b = b, a
-        edges.append({"from": slug[a], "to": slug[b],
-                      "relation": "parallel", "verified": "parallel"})
+        # Final citation check before committing a `parallel`: `has_path` above
+        # used OpenAlex refs only, which miss citations stored under a duplicate
+        # work-id. Reconcile the ≤3 emitted pairs via S2 title/DOI keys (cached,
+        # bounded) — a real citation means this is lineage, so emit a directed
+        # `builds-on` instead. Same ground truth verify.py --fix uses.
+        if _cites_via_s2(ids[b], ids[a]):          # later b cites earlier a
+            edges.append({"from": slug[a], "to": slug[b],
+                          "relation": "builds-on", "verified": "verified"})
+        elif _cites_via_s2(ids[a], ids[b]):        # a cites b (unusual)
+            edges.append({"from": slug[b], "to": slug[a],
+                          "relation": "builds-on", "verified": "verified"})
+        else:
+            edges.append({"from": slug[a], "to": slug[b],
+                          "relation": "parallel", "verified": "parallel"})
     _relabel(edges, ids, slug)
     return edges
 

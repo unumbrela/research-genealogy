@@ -260,43 +260,6 @@ def render(data, nodes, term_w):
 
 
 # ---- alternate formats -------------------------------------------------------
-def _mm_id(s):
-    return re.sub(r"\W", "_", s)
-
-
-def _mm_label(n):
-    title = clip(n.get("title") or n["id"], 48).replace('"', "'")
-    head = f"{n.get('authors') or n['id']} {n.get('year') or ''}".strip()
-    c = n.get("citations")
-    cite = f"<br/>{c} cites" if c is not None else ""
-    return f"<b>{head}</b><br/>{title}{cite}"
-
-
-MM_EDGE = {"builds-on": "-->", "inspired-by": "-.->",
-           "parallel": "-.->", "supersedes": "==>"}
-
-
-def render_mermaid(data, nodes):
-    children, primary, primary_rel, annotations, _, _ = build_graph(data, nodes)
-    role, _ = roles(nodes, primary)
-    out = ["```mermaid", "graph TD",
-           "  classDef founder fill:#dcfce7,stroke:#16a34a,color:#000;",
-           "  classDef hub fill:#cffafe,stroke:#0891b2,color:#000;",
-           "  classDef frontier fill:#fef9c3,stroke:#ca8a04,color:#000;",
-           "  classDef other fill:#f1f5f9,stroke:#64748b,color:#000;"]
-    for nid, n in nodes.items():
-        out.append(f'  {_mm_id(nid)}["{_mm_label(n)}"]:::{role[nid]}')
-    for e in data.get("edges", []):
-        f, t, rel = e["from"], e["to"], e.get("relation", "builds-on")
-        if f not in nodes or t not in nodes:
-            continue
-        arrow = MM_EDGE.get(rel, "-->")
-        lbl = f"|{rel}|" if rel in ("parallel", "supersedes") else ""
-        out.append(f"  {_mm_id(f)} {arrow}{lbl} {_mm_id(t)}")
-    out.append("```")
-    return "\n".join(out)
-
-
 def render_markdown(data, nodes):
     global _USE_COLOR
     _USE_COLOR = False
@@ -332,168 +295,6 @@ def render_markdown(data, nodes):
                      f"**—{rel}→** {nodes[t].get('authors','')} "
                      f"{nodes[t].get('year','')} {mark}")
     return "\n".join(L)
-
-
-def _bib_escape(s):
-    return (s or "").replace("{", "").replace("}", "")
-
-
-def render_bibtex(data, nodes):
-    out = []
-    for nid, n in sorted(nodes.items(),
-                         key=lambda kv: (kv[1].get("year") or 0)):
-        venue = n.get("venue") or ""
-        etype = "inproceedings" if re.search(
-            r"conf|proc|workshop|symp|CVPR|ICCV|ECCV|NeurIPS|ICML|ICLR|ACL|"
-            r"EMNLP|AAAI|KDD", venue, re.I) else "article"
-        field = "booktitle" if etype == "inproceedings" else "journal"
-        lines = [f"@{etype}{{{nid},",
-                 f"  title = {{{_bib_escape(n.get('title'))}}},",
-                 f"  author = {{{_bib_escape(n.get('authors'))}}},"]
-        if n.get("year"):
-            lines.append(f"  year = {{{n['year']}}},")
-        if venue:
-            lines.append(f"  {field} = {{{_bib_escape(venue)}}},")
-        if n.get("doi"):
-            lines.append(f"  doi = {{{n['doi']}}},")
-        if n.get("url"):
-            lines.append(f"  url = {{{n['url']}}},")
-        lines.append("}")
-        out.append("\n".join(lines))
-    return "\n\n".join(out)
-
-
-# ---- draw.io / diagrams.net (mxGraph XML) ------------------------------------
-DRAWIO_FILL = {"founder": ("#d5e8d4", "#82b366"), "hub": ("#dae8fc", "#6c8ebf"),
-               "frontier": ("#ffe6cc", "#d79b00"), "other": ("#f5f5f5", "#999999")}
-# only structural lineage edges are drawn; parallel / inspired-by are omitted to
-# keep the diagram clean (they remain in the tree/markdown views).
-DRAWIO_EDGE = {  # (strokeColor, dashed, width)
-    "builds-on": ("#6c8ebf", 0, 2), "supersedes": ("#b85450", 0, 3)}
-
-
-def _xml_esc(s):
-    return (str(s or "").replace("&", "&amp;").replace("<", "&lt;")
-            .replace(">", "&gt;").replace('"', "&quot;"))
-
-
-def _short_title(t):
-    """Abbreviate a paper title for a compact node label."""
-    t = (t or "").split(":")[0].split(" — ")[0].split(" – ")[0].strip()
-    return clip(t, 34)
-
-
-def render_drawio(data, nodes):
-    children, primary, primary_rel, annotations, edge_status, _ = \
-        build_graph(data, nodes)
-    role, _ = roles(nodes, primary)
-
-    # X: tidy tree layout (parents centred over children); Y: ranked by year
-    rts = sorted([n for n in nodes if n not in primary],
-                 key=lambda n: (nodes[n].get("year") or 9999))
-    xpos, slot = {}, [0]
-
-    def assign(nid, guard):
-        if nid in guard:
-            return
-        guard.add(nid)
-        kids = children.get(nid, [])
-        if not kids:
-            xpos[nid] = slot[0]
-            slot[0] += 1
-        else:
-            for k in kids:
-                assign(k, guard)
-            xpos[nid] = sum(xpos[k] for k in kids) / len(kids)
-    for r in rts:
-        assign(r, set())
-    for nid in nodes:               # any node missed (cycle guard) gets a slot
-        if nid not in xpos:
-            xpos[nid] = slot[0]
-            slot[0] += 1
-
-    years = sorted({n.get("year") for n in nodes.values() if n.get("year")})
-    ylevel = {y: i for i, y in enumerate(years)}
-    W, H, XS, YS = 200, 64, 250, 160
-
-    cells = []
-    npos = {}   # nid -> (x, y) of the box, for edge routing
-    # left-margin year axis — makes the timeline explicit
-    for y in years:
-        yy = ylevel[y] * YS
-        cells.append(
-            f'        <mxCell id="year{y}" value="{y}" '
-            f'style="text;html=1;align=right;verticalAlign=middle;fontSize=14;'
-            f'fontStyle=1;fontColor=#888;" vertex="1" parent="1">\n'
-            f'          <mxGeometry x="-180" y="{yy}" width="110" height="{H}" '
-            f'as="geometry"/>\n        </mxCell>')
-    for nid, n in nodes.items():
-        fill, stroke = DRAWIO_FILL[role[nid]]
-        st = edge_status.get((primary.get(nid), nid))
-        sym, _ = VERIFY_MARK.get(st, ("", ""))
-        cites = n.get("citations")
-        cline = (f"{cites} cites" if cites is not None else "") + \
-                (f"  ·  {sym}" if sym else "")
-        html = (f"<b>{_xml_esc((n.get('authors') or nid))} "
-                f"{_xml_esc(n.get('year') or '')}</b><br>"
-                f"<font style='font-size:10px'>{_xml_esc(_short_title(n.get('title')))}</font>"
-                f"<br><font style='font-size:9px;color:#555'>{_xml_esc(cline)}</font>")
-        style = (f"rounded=1;whiteSpace=wrap;html=1;fillColor={fill};"
-                 f"strokeColor={stroke};arcSize=12;verticalAlign=middle;"
-                 f"fontSize=11;spacing=4;shadow=1;")
-        x = round(xpos[nid] * XS)
-        y = ylevel.get(n.get("year"), 0) * YS
-        npos[nid] = (x, y)
-        cells.append(
-            f'        <mxCell id="{_xml_esc(nid)}" value="{_xml_esc(html)}" '
-            f'style="{style}" vertex="1" parent="1">\n'
-            f'          <mxGeometry x="{x}" y="{y}" width="{W}" height="{H}" '
-            f'as="geometry"/>\n        </mxCell>')
-
-    for i, e in enumerate(data.get("edges", [])):
-        f, t, rel = e["from"], e["to"], e.get("relation", "builds-on")
-        if f not in nodes or t not in nodes or rel not in DRAWIO_EDGE:
-            continue  # draw only builds-on / supersedes — keeps the canvas clean
-        col, dash, wdt = DRAWIO_EDGE[rel]
-        # leave the parent's bottom, enter the child's top; orthogonal routing.
-        style = (f"edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;"
-                 f"exitX=0.5;exitY=1;exitDx=0;exitDy=0;"
-                 f"entryX=0.5;entryY=0;entryDx=0;entryDy=0;jettySize=18;"
-                 f"strokeColor={col};strokeWidth={wdt};dashed={dash};"
-                 f"endArrow=block;endFill=1;")
-        # for edges spanning >1 year-level, force the horizontal run into the
-        # clear channel just below the parent so it can't cross intermediate
-        # boxes; the vertical drop then lands in the child's own column.
-        sx, sy = npos[f]
-        tx, _ = npos[t]
-        gap = ylevel.get(nodes[t].get("year"), 0) - ylevel.get(nodes[f].get("year"), 0)
-        geo = '<mxGeometry relative="1" as="geometry"/>'
-        if gap >= 2:
-            wy = sy + H + 28
-            geo = ('<mxGeometry relative="1" as="geometry">'
-                   f'<Array as="points"><mxPoint x="{tx + W // 2}" y="{wy}"/>'
-                   '</Array></mxGeometry>')
-        cells.append(
-            f'        <mxCell id="e{i}" style="{style}" '
-            f'edge="1" parent="1" source="{_xml_esc(f)}" target="{_xml_esc(t)}">\n'
-            f'          {geo}\n        </mxCell>')
-
-    body = "\n".join(cells)
-    field = _xml_esc(data.get("field", "genealogy"))
-    return (
-        '<mxfile host="research-genealogy">\n'
-        f'  <diagram name="{field}" id="genealogy">\n'
-        '    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" '
-        'guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" '
-        'pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">\n'
-        '      <root>\n'
-        '        <mxCell id="0"/>\n'
-        '        <mxCell id="1" parent="0"/>\n'
-        f'{body}\n'
-        '      </root>\n'
-        '    </mxGraphModel>\n'
-        '  </diagram>\n'
-        '</mxfile>')
 
 
 # ---- image-generation figure prompt -----------------------------------------
@@ -576,6 +377,12 @@ def _eras(nodes):
         ids = [nid for y in seg for nid in by_year.get(y, [])]
         eras.append((name, seg[0], seg[-1], ids))
     return eras
+
+
+def _short_title(t):
+    """Abbreviate a paper title for a compact node label."""
+    t = (t or "").split(":")[0].split(" — ")[0].split(" – ")[0].strip()
+    return clip(t, 34)
 
 
 def _cell(s):
@@ -795,8 +602,7 @@ def render_figure_prompt(data, nodes):
     return "\n".join(L)
 
 
-FORMATS = {"mermaid": render_mermaid, "markdown": render_markdown,
-           "bibtex": render_bibtex, "drawio": render_drawio,
+FORMATS = {"markdown": render_markdown,
            "figure-prompt": render_figure_prompt}
 
 
@@ -804,8 +610,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("lineage")
     ap.add_argument("--format",
-                    choices=["tree", "mermaid", "markdown", "bibtex", "drawio",
-                             "figure-prompt"],
+                    choices=["tree", "markdown", "figure-prompt"],
                     default="tree")
     ap.add_argument("--lang", choices=["zh", "en"], default="zh",
                     help="static text language for --format figure-prompt")

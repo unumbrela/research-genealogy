@@ -2,18 +2,21 @@
 """Turn a genealogy figure prompt into an actual diagram image.
 
 Feeds the `render_tree.py --format figure-prompt` output to an OpenAI-compatible
-image relay (中转站) — e.g. wegoo's `gpt-image-2` — and saves the returned PNG.
+image relay (中转站) — ZenMux (default) or wegoo, both serving `gpt-image-2` —
+and saves the returned PNG.
 
   python3 scripts/gen_figure.py figure-prompt.md --out figure.png
   python3 scripts/gen_figure.py lineage.json --out figure.png      # builds the prompt itself
   python3 scripts/render_tree.py L.json --format figure-prompt | python3 scripts/gen_figure.py -
+  python3 scripts/gen_figure.py lineage.json --relay wegoo --out figure.png
 
 Only the model-facing part of the prompt is sent: sections 一 (prose) + 二 (the
 hard structure checklist). The "给作者的话 / Section 3" notes are stripped.
 
-API key resolution order: --api-key  >  $WEGOO_API_KEY  >  the first sk-… token in
-image-relay.md. Base URL defaults to the wegoo relay; override with --base-url or
-$WEGOO_BASE_URL. Stdlib only.
+Relay selection: --relay {zenmux,wegoo} (default zenmux). Base URL resolution:
+--base-url  >  $ZENMUX_BASE_URL / $WEGOO_BASE_URL  >  the chosen relay's default.
+API key resolution: --api-key  >  $ZENMUX_API_KEY / $WEGOO_API_KEY  >  that
+relay's key parsed from image-relay.md. Stdlib only.
 """
 import argparse
 import base64
@@ -26,9 +29,20 @@ import urllib.request
 
 THIS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(THIS)
-DEFAULT_BASE = os.environ.get("WEGOO_BASE_URL", "https://ai.wegoo.site/v1")
 KEY_DOC = os.path.join(ROOT, "image-relay.md")
-KEY_RE = re.compile(r"sk-[A-Za-z0-9]{32,}")
+KEY_RE = re.compile(r"sk-[A-Za-z0-9-]{32,}")
+
+# OpenAI-compatible image relays. Both serve gpt-image-2 at /images/generations.
+RELAYS = {
+    "zenmux": {"base": "https://zenmux.ai/api/v1",  "env": "ZENMUX_API_KEY"},
+    "wegoo":  {"base": "https://ai.wegoo.site/v1",  "env": "WEGOO_API_KEY"},
+}
+DEFAULT_RELAY = "zenmux"
+
+
+def relay_base(relay):
+    """Default base URL for a relay: $<RELAY>_BASE_URL  >  registry default."""
+    return os.environ.get(relay.upper() + "_BASE_URL", RELAYS[relay]["base"])
 
 
 # ---- prompt ------------------------------------------------------------------
@@ -79,18 +93,34 @@ def prompt_from_input(path):
 
 
 # ---- key ---------------------------------------------------------------------
-def resolve_key(cli_key):
+def key_from_doc(relay):
+    """Parse this relay's key from image-relay.md. Each provider labels its key on
+    an assignment line — e.g. `ZENMUX_API_KEY = sk-…` — which we match directly so
+    the right key is picked even when the env-var name is also mentioned elsewhere
+    (warnings, the parameters table). Falls back to the first sk-… token in the
+    file (single-key docs)."""
+    if not os.path.exists(KEY_DOC):
+        return None
+    text = open(KEY_DOC, encoding="utf-8").read()
+    env = RELAYS[relay]["env"]                        # e.g. ZENMUX_API_KEY
+    m = re.search(env + r"\s*[=:]\s*(sk-[A-Za-z0-9-]{32,})", text)
+    if m:
+        return m.group(1)
+    m = KEY_RE.search(text)
+    return m.group(0) if m else None
+
+
+def resolve_key(cli_key, relay):
     if cli_key:
         return cli_key
-    if os.environ.get("WEGOO_API_KEY"):
-        return os.environ["WEGOO_API_KEY"]
-    if os.path.exists(KEY_DOC):
-        m = KEY_RE.search(open(KEY_DOC, encoding="utf-8").read())
-        if m:
-            return m.group(0)
+    if os.environ.get(RELAYS[relay]["env"]):
+        return os.environ[RELAYS[relay]["env"]]
+    k = key_from_doc(relay)
+    if k:
+        return k
     raise SystemExit(
-        "no API key — pass --api-key, set $WEGOO_API_KEY, or record one in "
-        f"{KEY_DOC} (see image-relay.md).")
+        f"no API key for relay '{relay}' — pass --api-key, set "
+        f"${RELAYS[relay]['env']}, or record one in {KEY_DOC} (see image-relay.md).")
 
 
 # ---- relay -------------------------------------------------------------------
@@ -132,7 +162,10 @@ def main():
                     help="image size, e.g. 1536x1024 / 1024x1024 / 1024x1536")
     ap.add_argument("--model", default="gpt-image-2")
     ap.add_argument("--n", type=int, default=1)
-    ap.add_argument("--base-url", default=DEFAULT_BASE)
+    ap.add_argument("--relay", choices=sorted(RELAYS), default=DEFAULT_RELAY,
+                    help="image relay (中转站); default zenmux")
+    ap.add_argument("--base-url", default="",
+                    help="override the relay's base URL")
     ap.add_argument("--api-key", default="")
     ap.add_argument("--print-prompt", action="store_true",
                     help="print the prompt that would be sent and exit (no network)")
@@ -149,9 +182,11 @@ def main():
     out = args.out or (
         "figure.png" if args.input == "-"
         else os.path.splitext(args.input)[0] + ".png")
-    key = resolve_key(args.api_key)
-    sys.stderr.write(f"calling {args.base_url} · {args.model} · {args.size} …\n")
-    png = generate(prompt, key, args.base_url, args.model, args.size, args.n)
+    base_url = args.base_url or relay_base(args.relay)
+    key = resolve_key(args.api_key, args.relay)
+    sys.stderr.write(
+        f"calling {base_url} · {args.relay} · {args.model} · {args.size} …\n")
+    png = generate(prompt, key, base_url, args.model, args.size, args.n)
     with open(out, "wb") as f:
         f.write(png)
     print(f"saved {out}  ({len(png):,} bytes)")

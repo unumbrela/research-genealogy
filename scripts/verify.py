@@ -125,8 +125,9 @@ def verify(data):
     results = []
     for e in data.get("edges", []):
         f, t, rel = e["from"], e["to"], e.get("relation", "builds-on")
+        fix = None   # a data-grounded correction the --fix pass can apply
         if f not in nodes or t not in nodes:
-            results.append((e, "unresolved"))
+            results.append((e, "unresolved", None))
             continue
         f_id, _ = info(f)
         t_id, _ = info(t)
@@ -137,12 +138,20 @@ def verify(data):
                 status = "verified"
             elif cites(f, t):
                 status = "reversed"
+                # f actually cites t → t is the ancestor; swap the arrow.
+                fix = {"from": t, "to": f, "relation": "builds-on"}
             else:
                 status = "unverified"
         else:  # parallel: neither should cite the other
-            status = "cross-cite" if (cites(t, f) or cites(f, t)) \
-                else "parallel"
-        results.append((e, status))
+            if cites(t, f):          # t cites f → t builds on f, keep direction
+                status, fix = "cross-cite", {"from": f, "to": t,
+                                             "relation": "builds-on"}
+            elif cites(f, t):        # f cites t → t builds on f, flip direction
+                status, fix = "cross-cite", {"from": t, "to": f,
+                                             "relation": "builds-on"}
+            else:
+                status = "parallel"
+        results.append((e, status, fix))
     return nodes, results
 
 
@@ -153,7 +162,7 @@ def report(nodes, results):
 
     counts = {}
     print()
-    for e, status in results:
+    for e, status, _ in results:
         counts[status] = counts.get(status, 0) + 1
         sym = SYMBOL.get(status, "?")
         rel = e.get("relation", "builds-on")
@@ -172,11 +181,40 @@ def report(nodes, results):
         print("\n  → all citation edges verified against OpenAlex. ✓")
 
 
+def _apply_fixes(nodes, results):
+    """Rewrite edges from the citation ground truth (the --fix pass).
+
+    Only the two data-settled cases are touched: a backwards `builds-on`
+    (↺ reversed) gets its arrow swapped, and a `parallel` edge that is really a
+    citation (‼ cross-cite) becomes a directed `builds-on`. `unverified` (a real
+    data gap) and true `parallel` are left alone — honesty is preserved."""
+    def label(nid):
+        n = nodes.get(nid, {})
+        return f"{n.get('authors', nid)} {n.get('year', '')}".strip()
+
+    changed = []
+    for e, status, fix in results:
+        if not fix:
+            continue
+        old = f"{label(e['from'])} --{e.get('relation', 'builds-on')}--> {label(e['to'])}"
+        e["from"], e["to"] = fix["from"], fix["to"]
+        e["relation"] = fix["relation"]
+        e["verified"] = "verified"
+        e.pop("_label_hint", None)
+        new = f"{label(e['from'])} --{e['relation']}--> {label(e['to'])}"
+        changed.append((status, old, new))
+    return changed
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("lineage")
     ap.add_argument("--write", action="store_true",
                     help="annotate each edge with its verification status")
+    ap.add_argument("--fix", action="store_true",
+                    help="also rewrite edges the citation data settles "
+                         "(reversed → swapped, cross-cite parallel → builds-on); "
+                         "implies --write")
     args = ap.parse_args()
 
     try:
@@ -188,13 +226,25 @@ def main():
     nodes, results = verify(data)
     report(nodes, results)
 
-    if args.write:
-        for e, status in results:
+    if args.fix:
+        changed = _apply_fixes(nodes, results)
+        if changed:
+            print(f"\n  fixed {len(changed)} edge(s) from real citations:")
+            for status, old, new in changed:
+                print(f"    {SYMBOL.get(status, '?')} {old}")
+                print(f"        ⇒ {new}")
+        else:
+            print("\n  nothing to fix (no reversed / cross-cite edges).")
+
+    if args.write or args.fix:
+        for e, status, fix in results:
+            if args.fix and fix:         # corrected edges are already "verified"
+                continue
             e["verified"] = status
         with open(args.lineage, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
             f.write("\n")
-        print(f"\n  wrote verification status into {args.lineage}")
+        print(f"\n  wrote {args.lineage}")
 
 
 if __name__ == "__main__":

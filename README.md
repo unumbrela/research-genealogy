@@ -256,10 +256,7 @@ snowball for a quick draft.
 
 ```bash
 python3 scripts/render_tree.py lineage.json                     # colored terminal tree (default)
-python3 scripts/render_tree.py lineage.json --format mermaid    # GitHub-renderable graph
 python3 scripts/render_tree.py lineage.json --format markdown   # report: tree + table + edges
-python3 scripts/render_tree.py lineage.json --format bibtex     # cite every node
-python3 scripts/render_tree.py lineage.json --format drawio     # editable draw.io / diagrams.net diagram
 python3 scripts/render_tree.py lineage.json --format figure-prompt  # prompt for an image model (+ hard structure checklist)
 ```
 
@@ -271,9 +268,11 @@ ones. `--lang en` for an English brief. Example output:
 [`examples/diffusion-models-figure-prompt.md`](examples/diffusion-models-figure-prompt.md).
 
 To turn that prompt into an actual PNG, pipe it through an OpenAI-compatible image
-relay (e.g. `gpt-image-2`) with `scripts/gen_figure.py lineage.json --out figure.png`
-— it sends the prose + the hard checklist and saves the returned image. Relay
-setup and API-key handling: [`image-relay.md`](image-relay.md).
+relay (中转站) running `gpt-image-2` with
+`scripts/gen_figure.py lineage.json --out figure.png` — it sends the prose + the
+hard checklist and saves the returned image. The default relay is **ZenMux**;
+pass `--relay wegoo` for the alternate. Relay setup and API-key handling:
+[`image-relay.md`](image-relay.md).
 
 ### Manual passes (full control)
 

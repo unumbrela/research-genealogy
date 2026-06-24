@@ -177,6 +177,81 @@ def _show(items):
     return "" if not items else ": " + ", ".join(map(str, items))
 
 
+NAME_STOP = {"et", "al", "and"}
+# data-source / infrastructure terms that look like 'Name (year)' but never
+# denote a cited paper — kept out of the hallucination warn.
+INFRA = {"openalex", "semantic", "scholar", "arxiv", "doi", "github", "api",
+         "fid", "clip", "imagenet", "coco", "cvpr", "iccv", "neurips"}
+
+
+def _name_tokens(authors):
+    """Distinctive name tokens of an author string ('Ho, Jonathan et al.' →
+    {'ho','jonathan'}). Length ≥2 so surnames like 'Ho' survive; stopwords out."""
+    toks = re.findall(r"[A-Za-zÀ-ɏ]{2,}", authors or "")
+    return {t.lower() for t in toks if t.lower() not in NAME_STOP}
+
+
+def _mentions(body_low, token):
+    """Word-boundary match — 'ho' hits 'Ho (2020)', not 'method'."""
+    return re.search(r"\b" + re.escape(token) + r"\b", body_low) is not None
+
+
+def lint_report(data, report_path, g):
+    """Cross-check the delivered narrative (.md) against the nodes — the SKILL's
+    prose rules turned into enforced checks, the same way lint() gates the JSON."""
+    try:
+        with open(report_path, encoding="utf-8") as f:
+            body = f.read()
+    except OSError as e:
+        g.check(False, f"report file readable ({e})")
+        return g
+    body_low = body.lower()
+    nodes = data.get("nodes", [])
+    print(f"\n[report] {report_path} ({len(body)} chars)")
+
+    # every node is actually discussed in the narrative (SKILL hard rule)
+    missing = []
+    node_tokens = []
+    for n in nodes:
+        toks = _name_tokens(n.get("authors"))
+        node_tokens.append(toks)
+        if toks and not any(_mentions(body_low, t) for t in toks):
+            missing.append(n.get("id"))
+    g.check(not missing,
+            f"every node is cited in the narrative{_show(missing)}")
+
+    # required sections present
+    needed = ["发展历程", "前沿", "开放问题", "论文清单"]
+    absent = [s for s in needed if s not in body]
+    g.check(not absent, f"required report sections present{_show(absent)}")
+
+    # the panorama tree code block survives
+    g.check("```" in body and ("│" in body or "└" in body),
+            "panorama genealogy tree block present")
+
+    # possible hallucinated paper: an 'Author (YYYY)' whose surname is no node.
+    # Conservative (warn-only): skip data-source / infra terms, skip when a real
+    # node author is named in the immediate context (the regex grabbed a model
+    # name, not the author).
+    all_tokens = set().union(*node_tokens) if node_tokens else set()
+    stray = []
+    for m in re.finditer(r"([A-Za-zÀ-ɏ][\wÀ-ɏ\-]+)"
+                         r"(?:\s*(?:et al\.?|&|and)\s*[\wÀ-ɏ\-]+)?"
+                         r"\s*[（(]\s*\d{4}", body):
+        name = m.group(1)
+        parts = [p.lower() for p in re.split(r"[-\s]", name) if len(p) >= 2]
+        if any(p in all_tokens for p in parts) or any(p in INFRA for p in parts):
+            continue
+        ctx = body_low[max(0, m.start() - 40):m.end() + 40]
+        if any(_mentions(ctx, t) for t in all_tokens):
+            continue                       # a real node author is right here
+        stray.append(name)
+    g.check(not sorted(set(stray)),
+            f"no 'Author (year)' citation missing from the tree"
+            f"{_show(sorted(set(stray)))}", warn=True)
+    return g
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("lineage")
@@ -184,10 +259,23 @@ def main():
                     help="relax now-relative frontier checks (frozen examples)")
     ap.add_argument("--strict", action="store_true",
                     help="treat warnings as failures too")
+    ap.add_argument("--report", metavar="FILE.md",
+                    help="also gate the delivered narrative against the nodes")
     args = ap.parse_args()
     with open(args.lineage, encoding="utf-8") as f:
         data = json.load(f)
     g = lint(data, curated=args.curated, strict=args.strict)
+    if args.report:
+        lint_report(data, args.report, g)
+        print()
+        if g.errors:
+            print(f"FAILED — {len(g.errors)} error(s):")
+            for m in g.errors:
+                print(f"  ✗ {m}")
+        elif g.warns:
+            print(f"PASSED with {len(g.warns)} warning(s).")
+        else:
+            print("Quality gate passed (lineage + report). ✓")
     sys.exit(1 if g.failed() else 0)
 
 
