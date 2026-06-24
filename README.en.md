@@ -224,10 +224,14 @@ Pipe the prompt through an OpenAI-compatible image relay running `gpt-image-2`:
 
 ```bash
 python3 scripts/gen_figure.py lineage.json --out figure.png         # data → prompt → image (ZenMux by default)
-python3 scripts/gen_figure.py lineage.json --relay wegoo --out figure.png  # alternate relay
+python3 scripts/gen_figure.py lineage.json --api-key sk-… --out figure.png  # use your own key
+python3 scripts/gen_figure.py lineage.json --relay wegoo --out figure.png   # alternate relay
 ```
 
-Relay setup and API-key handling: [`image-relay.md`](image-relay.md).
+**No key? Still works.** If no key is found the script doesn't error — it saves the prompt to
+`<out>.prompt.txt` and offers two paths: (1) set `ZENMUX_API_KEY` / pass `--api-key` and re-run to
+auto-generate, or (2) paste that prompt into ChatGPT / a GPT image page (or Midjourney / DALL·E) and
+draw it by hand. Relay setup and API-key handling: [`image-relay.md`](image-relay.md).
 </details>
 
 <details>

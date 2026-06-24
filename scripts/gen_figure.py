@@ -16,7 +16,12 @@ hard structure checklist). The "给作者的话 / Section 3" notes are stripped.
 Relay selection: --relay {zenmux,wegoo} (default zenmux). Base URL resolution:
 --base-url  >  $ZENMUX_BASE_URL / $WEGOO_BASE_URL  >  the chosen relay's default.
 API key resolution: --api-key  >  $ZENMUX_API_KEY / $WEGOO_API_KEY  >  that
-relay's key parsed from image-relay.md. Stdlib only.
+relay's key parsed from image-relay.md.
+
+No key configured? The script does not error out: it saves the image prompt to
+<out>.prompt.txt and prints two ways to get the figure — (1) supply a key and
+re-run for auto-generation, or (2) paste the prompt into ChatGPT / a GPT image
+page (or Midjourney / DALL·E) and draw it by hand. Stdlib only.
 """
 import argparse
 import base64
@@ -111,16 +116,32 @@ def key_from_doc(relay):
 
 
 def resolve_key(cli_key, relay):
+    """Resolve the relay API key, or None if none is configured — in which case
+    the caller falls back to handing the user the prompt for manual generation."""
     if cli_key:
         return cli_key
     if os.environ.get(RELAYS[relay]["env"]):
         return os.environ[RELAYS[relay]["env"]]
-    k = key_from_doc(relay)
-    if k:
-        return k
-    raise SystemExit(
-        f"no API key for relay '{relay}' — pass --api-key, set "
-        f"${RELAYS[relay]['env']}, or record one in {KEY_DOC} (see image-relay.md).")
+    return key_from_doc(relay)
+
+
+def save_prompt_and_explain(prompt, out, relay):
+    """No API key configured: save the figure prompt next to the intended image
+    and explain the two ways to turn it into a picture — supply a key for
+    auto-generation, or paste the prompt into a chat image UI (ChatGPT / a GPT
+    image page, Midjourney, DALL·E) by hand. No key and no network needed."""
+    env = RELAYS[relay]["env"]
+    prompt_path = os.path.splitext(out)[0] + ".prompt.txt"
+    with open(prompt_path, "w", encoding="utf-8") as f:
+        f.write(prompt + "\n")
+    sys.stderr.write(
+        f"\nno API key for relay '{relay}' — skipped auto-generation.\n"
+        f"the image prompt was saved to:  {prompt_path}\n\n"
+        "turn it into a figure either way:\n"
+        f"  1) auto   — set ${env} (or pass --api-key sk-…) and re-run this command;\n"
+        "  2) manual — open ChatGPT / a GPT image page (or Midjourney / DALL·E),\n"
+        f"             paste the contents of {prompt_path}, and let it draw the figure.\n")
+    print(prompt_path)
 
 
 # ---- relay -------------------------------------------------------------------
@@ -182,8 +203,11 @@ def main():
     out = args.out or (
         "figure.png" if args.input == "-"
         else os.path.splitext(args.input)[0] + ".png")
-    base_url = args.base_url or relay_base(args.relay)
     key = resolve_key(args.api_key, args.relay)
+    if not key:
+        save_prompt_and_explain(prompt, out, args.relay)
+        return
+    base_url = args.base_url or relay_base(args.relay)
     sys.stderr.write(
         f"calling {base_url} · {args.relay} · {args.model} · {args.size} …\n")
     png = generate(prompt, key, base_url, args.model, args.size, args.n)

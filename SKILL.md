@@ -346,6 +346,11 @@ python3 scripts/gen_figure.py <renamed-prompt>.md --out figure.png     # from a 
 python3 scripts/gen_figure.py lineage.json --relay wegoo --out figure.png  # alternate relay
 ```
 
+If no relay key is configured, `gen_figure.py` does not error — it saves the
+prompt to `<out>.prompt.txt` and prints two ways to proceed: supply a key
+(`--api-key` / `$ZENMUX_API_KEY`) and re-run, or paste that prompt into ChatGPT /
+a GPT image page (Midjourney / DALL·E) to draw it by hand.
+
 ## Manual search passes (when the draft missed something)
 
 ```

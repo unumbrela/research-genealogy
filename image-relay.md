@@ -93,6 +93,29 @@ python3 scripts/gen_figure.py figure-prompt.md --print-prompt
 脚本只发送提示词的**「一、提示词正文」+「二、结构清单」**两节（结构清单是硬约束，
 防止模型臆造连接），自动丢弃「三、给作者的话」。
 
+## 没有任何中转站 Key 怎么办？
+
+`gen_figure.py` 在三处都找不到 Key 时（`--api-key` / 环境变量 / 本文件都没有），
+**不会报错退出**，而是把图像提示词保存成 `<输出名>.prompt.txt`，并打印两条出图路径：
+
+```text
+no API key for relay 'zenmux' — skipped auto-generation.
+the image prompt was saved to:  figure.prompt.txt
+
+turn it into a figure either way:
+  1) auto   — 设置 $ZENMUX_API_KEY（或加 --api-key sk-…）后重跑本命令；
+  2) manual — 打开 ChatGPT / GPT 生图页面（或 Midjourney / DALL·E），
+             把 figure.prompt.txt 的内容粘进去，让它直接画出谱系图。
+```
+
+也就是说**完全没有 Key 也能用**：
+
+- **路径①（自动）**：去 [ZenMux](https://zenmux.ai) / [wegoo](https://ai.wegoo.site)（或任何
+  OpenAI 兼容的生图服务）拿一个自己的 Key，`export ZENMUX_API_KEY=sk-…`（或 `--api-key`、
+  `--base-url`）后重跑，脚本自动出图。
+- **路径②（手动）**：直接拿 `figure.prompt.txt`（或 `--print-prompt` 的输出）粘到
+  ChatGPT 等生图页面，手动出图。提示词里的「结构清单」是硬约束，能防止模型臆造连接。
+
 ## 参数
 
 | 参数 | 默认 | 说明 |
